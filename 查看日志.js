@@ -1,0 +1,9393 @@
+"ui";
+/******/ (() => { // webpackBootstrap
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./src/lib/AesUtil.js":
+/*!****************************!*\
+  !*** ./src/lib/AesUtil.js ***!
+  \****************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-01-08 17:07:28
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:22:23
+ * @Description: AES加密工具
+ */
+var CryptoJS = __webpack_require__(/*! @/lib/crypto-js.js */ "./src/lib/crypto-js.js");
+function AesUtil() {
+  this.key = device.getAndroidId();
+}
+AesUtil.prototype.encrypt = function (message, key) {
+  key = key || this.key;
+  if (key.length !== 8 && key.length !== 16 && key.length !== 32) {
+    console.error('密码长度不正确必须为8/16/32位');
+    return null;
+  }
+  return CryptoJS.AES.encrypt(message, CryptoJS.enc.Utf8.parse(key), {
+    mode: CryptoJS.mode.ECB,
+    padding: CryptoJS.pad.Pkcs7
+  }).toString();
+};
+AesUtil.prototype.decrypt = function (encrypt, key) {
+  key = key || this.key;
+  if (key.length !== 8 && key.length !== 16 && key.length !== 32) {
+    console.error('密码长度不正确必须为8/16/32位');
+    return null;
+  }
+  try {
+    return CryptoJS.AES.decrypt(encrypt, CryptoJS.enc.Utf8.parse(key), {
+      mode: CryptoJS.mode.ECB,
+      padding: CryptoJS.pad.Pkcs7
+    }).toString(CryptoJS.enc.Utf8);
+  } catch (e) {
+    console.error('秘钥不正确无法解密');
+    return null;
+  }
+};
+AesUtil.prototype.md5 = function (content) {
+  if (content) {
+    return CryptoJS.MD5(content);
+  } else {
+    return '';
+  }
+};
+module.exports = new AesUtil();
+
+/***/ }),
+
+/***/ "./src/lib/AutoJSRemoveDexResolver.js":
+/*!********************************************!*\
+  !*** ./src/lib/AutoJSRemoveDexResolver.js ***!
+  \********************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-08-04 17:30:20
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:42:04
+ * @Description: 
+ */
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config,
+  _storage_name = _require.storage_name;
+/**
+ * 免费版的runtime.loadDex loadJar有问题，加载前需要将mDexClassLoaders清空
+ */
+var _resolver = function _resolver() {
+  if (_config.noneed_resolve_dex) {
+    return;
+  }
+  console.verbose('run resolver');
+  try {
+    var packageName = context.getPackageName();
+    if (packageName === 'org.autojs.autojs' || packageName === 'com.taobao.taodang.x') {
+      console.verbose('packageName: ' + packageName);
+      importClass(java.lang.Class);
+      var target = org.mozilla.javascript.ContextFactory.getGlobal().getApplicationClassLoader();
+      var clz = target.getClass();
+      console.verbose("clz:" + clz.toString());
+      var field = clz.getDeclaredField("mDexClassLoaders");
+      field.setAccessible(true);
+      var fieldValue = field.get(target);
+      var fieldClass = fieldValue.getClass();
+      if (fieldClass + '' === 'class java.util.ArrayList') {
+        fieldValue.clear();
+        console.warn('能不能不要再用全是BUG的免费版了呀！推荐使用我的修改版 下载连接：https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.1/AutoJS.Modify.latest.apk');
+        console.verbose("success");
+      } else {
+        console.verbose("fieldValue is not list");
+      }
+    } else {
+      _config.noneed_resolve_dex = true;
+      storages.create(_storage_name).put('noneed_resolve_dex', true);
+    }
+  } catch (e) {
+    var errorInfo = e + '';
+    console.error('发生异常' + errorInfo);
+    toastLog('请强制关闭AutoJS并重新启动');
+    exit();
+  }
+};
+module.exports = _resolver;
+
+/***/ }),
+
+/***/ "./src/lib/BaseCommonFunctions.js":
+/*!****************************************!*\
+  !*** ./src/lib/BaseCommonFunctions.js ***!
+  \****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _typeof2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/typeof */ "./node_modules/@babel/runtime/helpers/typeof.js"));
+/**
+ * 通用方法集合，和项目无关，项目相关的写到 ProjectCommonFunctions.js 中
+ */
+importClass(android.content.Context);
+importClass(android.provider.Settings);
+importClass(java.io.StringWriter);
+importClass(java.io.StringReader);
+importClass(java.io.PrintWriter);
+importClass(java.io.BufferedReader);
+importClass(java.lang.StringBuilder);
+importClass(android.content.pm.PackageManager);
+var _global_this_ = __webpack_require__.g;
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config,
+  _storage_name = _require.storage_name,
+  project_name = _require.project_name;
+var Timers = __webpack_require__(/*! @/lib/prototype/Timers */ "./src/lib/prototype/Timers.js");
+var _runningQueueDispatcher = __webpack_require__(/*! @/lib/prototype/RunningQueueDispatcher */ "./src/lib/prototype/RunningQueueDispatcher.js");
+var _FloatyInstance = __webpack_require__(/*! @/lib/prototype/FloatyUtil */ "./src/lib/prototype/FloatyUtil.js");
+var automator = __webpack_require__(/*! @/lib/prototype/Automator */ "./src/lib/prototype/Automator.js");
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var _logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var processShare = __webpack_require__(/*! @/lib/prototype/ProcessShare */ "./src/lib/prototype/ProcessShare.js");
+var capturePermissionResolver = __webpack_require__(/*! @/lib/prototype/CapturePermissionResolver */ "./src/lib/prototype/CapturePermissionResolver.js");
+var formatDate = __webpack_require__(/*! @/lib/DateUtil.js */ "./src/lib/DateUtil.js");
+var _require2 = __webpack_require__(/*! @/lib/UpdateChecker.js */ "./src/lib/UpdateChecker.js"),
+  updateChecker = _require2.updateChecker;
+var storageFactory = __webpack_require__(/*! @/lib/prototype/StorageFactory */ "./src/lib/prototype/StorageFactory.js");
+var RUNTIME_STORAGE = _storage_name + "_runtime";
+var DISMISS_AWAIT_DIALOG = 'dismissAwaitDialog';
+var TIMER_AUTO_START = "timerAutoStart";
+var READY = 'ready_engine';
+var DISMISSED_PACKAGE = 'dismissedPackage';
+var SKIPPED_PACKAGE = 'skipedPackage';
+var EXTEND_FAILED_COUNT = 'extendFailedCount';
+function CommonFunctions() {
+  this.keyList = [];
+  storageFactory.initFactoryByKey(DISMISS_AWAIT_DIALOG, {
+    dismissReason: ''
+  });
+  storageFactory.initFactoryByKey(TIMER_AUTO_START, {
+    array: []
+  });
+  storageFactory.initFactoryByKey(READY, {
+    engineId: -1
+  });
+  storageFactory.initFactoryByKey(DISMISSED_PACKAGE, {
+    packageName: '',
+    count: 0
+  });
+  storageFactory.initFactoryByKey(SKIPPED_PACKAGE, {
+    packageName: '',
+    count: 0
+  });
+  storageFactory.initFactoryByKey(EXTEND_FAILED_COUNT, {
+    count: 0
+  });
+  // 初始化森林相关的存储数据
+  this.initStorageFactory();
+  // 截图锁
+  var captureScreenLock = threads.lock();
+  // 初始化生命周期回调 start
+  var lifecycleCallbacks = [];
+  var idCounter = 0;
+  var lifecycleLock = threads.lock();
+  _config.isRunning = true;
+  var ENGINE_ID = engines.myEngine().id;
+  var _this = this;
+
+  /**
+   * 通过额外线程方式监听脚本是否退出运行 需要额外创建线程池，但是能百分百保证脚本结束后自动执行回调
+   * @deprecated 通过event.on('exit') 触发即可 暂时不使用该方法
+   */
+  this.initLifecycleDeamonByThreadPool = function () {
+    importClass(java.util.concurrent.LinkedBlockingQueue);
+    importClass(java.util.concurrent.ThreadPoolExecutor);
+    importClass(java.util.concurrent.TimeUnit);
+    importClass(java.util.concurrent.ThreadFactory);
+    importClass(java.util.concurrent.Executors);
+    // 注册脚本生命周期回调，创建一个单独的线程来监听当前脚本是否已经执行完毕
+    var lifecycleDeamonThreadPool = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, new LinkedBlockingQueue(10), new ThreadFactory({
+      newThread: function newThread(runnable) {
+        var thread = Executors.defaultThreadFactory().newThread(runnable);
+        thread.setName(_config.thread_name_prefix + ENGINE_ID + '-lifecycle-deamon-' + thread.getName());
+        return thread;
+      }
+    }));
+    lifecycleDeamonThreadPool.execute(function () {
+      while (_config.isRunning) {
+        // 每0.5秒检测一次isRunning, 5秒太慢了
+        sleep(500);
+        var currentEngine = engines.all().filter(function (engine) {
+          return engine.id === ENGINE_ID;
+        });
+        _config.isRunning = currentEngine && currentEngine.length > 0;
+      }
+      _logUtils.debugInfo('脚本已经中止执行，执行生命周期回调');
+      try {
+        // 脚本已经结束，执行callbacks
+        if (lifecycleCallbacks && lifecycleCallbacks.length > 0) {
+          _logUtils.debugInfo('生命周期回调总数：' + lifecycleCallbacks.length);
+          lifecycleCallbacks.forEach(function (callback, index) {
+            try {
+              _logUtils.debugInfo(['执行生命周期回调：[{}/{}] {}', index + 1, lifecycleCallbacks.length, callback.desc]);
+              callback.func();
+            } catch (e) {
+              _logUtils.errorInfo(callback.desc + ' 生命周期回调异常' + e);
+            }
+          });
+        }
+      } catch (e) {
+        _logUtils.errorInfo('执行生命周期回调异常' + e);
+      }
+      // 新建线程 关闭线程池
+      var thread = new Thread(new java.lang.Runnable({
+        run: function run() {
+          try {
+            lifecycleDeamonThreadPool.shutdown();
+            var flag = lifecycleDeamonThreadPool.awaitTermination(5, TimeUnit.SECONDS);
+            lifecycleDeamonThreadPool.shutdownNow();
+            _logUtils.debugInfo('lifecycleDeamon线程池关闭：' + flag);
+          } catch (e) {
+            _logUtils.errorInfo('关闭lifecycleDeamon线程池异常:' + e);
+          } finally {
+            lifecycleDeamonThreadPool = null;
+          }
+        }
+      }));
+      thread.setName(_config.thread_name_prefix + ENGINE_ID + "_shutdown_lifecycle_thread");
+      thread.start();
+    });
+  };
+  // 初始化生命周期回调 end
+
+  /**
+   * 通过events事件执行生命周期回调 缺点是可能触发最大监听数限制，另外可能会不小心被 events.removeAllListeners() 注销
+   */
+  this.initLifecycleDeamonByEvents = function () {
+    _logUtils.debugInfo(['通过event.on(\'exit\')注册生命周期回调']);
+    events.on('exit', function () {
+      _logUtils.debugInfo('脚本已经中止执行，执行生命周期回调');
+      try {
+        // 脚本已经结束，执行callbacks
+        if (lifecycleCallbacks && lifecycleCallbacks.length > 0) {
+          _logUtils.debugInfo('生命周期回调总数：' + lifecycleCallbacks.length);
+          lifecycleCallbacks.forEach(function (callback, index) {
+            try {
+              _logUtils.debugInfo(['执行生命周期回调：[{}/{}] {}', index + 1, lifecycleCallbacks.length, callback.desc]);
+              callback.func();
+            } catch (e) {
+              _logUtils.errorInfo(callback.desc + ' 生命周期回调异常' + e);
+            }
+          });
+        }
+      } catch (e) {
+        _logUtils.errorInfo('执行生命周期回调异常' + e);
+      }
+    });
+  };
+
+  // 选择其中一个即可
+  if (_config._init_lifecycle_by_thread_pool) {
+    _logUtils.warnInfo('基于线程监听生命周期的模式在新版AutoJS中可能不再支持，不建议使用', true);
+    this.initLifecycleDeamonByThreadPool();
+  } else {
+    this.initLifecycleDeamonByEvents();
+  }
+  var _current_pacakge = currentPackage;
+  currentPackage = function currentPackage() {
+    var start = new Date().getTime();
+    try {
+      if (!runtime.getAccessibilityBridge()) {
+        return _current_pacakge();
+      }
+      // 通过windowRoot获取根控件的包名，理论上返回一个 速度较快
+      var windowRoots = runtime.getAccessibilityBridge().windowRoots();
+      if (windowRoots && windowRoots.size() > 0) {
+        _logUtils.debugInfo(['windowRoots size: {}', windowRoots.size()]);
+        for (var i = windowRoots.size() - 1; i >= 0; i--) {
+          var root = windowRoots.get(i);
+          if (root !== null && root.getPackageName()) {
+            return root.getPackageName();
+          }
+        }
+      }
+      // windowRoot获取失败了通过service.getWindows获取根控件的包名，按倒序从队尾开始获取 速度相对慢一点
+      var service = runtime.getAccessibilityBridge().getService();
+      var serviceWindows = service !== null ? service.getWindows() : null;
+      if (serviceWindows && serviceWindows.size() > 0) {
+        _logUtils.debugInfo(['windowRoots未能获取包名信息，尝试service window size: {}', serviceWindows.size()]);
+        for (var _i = serviceWindows.size() - 1; _i >= 0; _i--) {
+          var window = serviceWindows.get(_i);
+          var _root = null;
+          if (window && (_root = window.getRoot()) != null && _root.getPackageName()) {
+            return _root.getPackageName();
+          }
+        }
+      }
+      _logUtils.debugInfo(['service.getWindows未能获取包名信息，通过currentPackage()返回数据']);
+      // 以上方法无法获取的，直接按原方法获取包名
+      return _current_pacakge();
+    } catch (e) {
+      _logUtils.errorInfo(['通过控件方式获取包名失败, 使用原始方法获取', e]);
+      return _current_pacakge();
+    } finally {
+      _logUtils.debugInfo(['获取包名总耗时：{}ms', new Date().getTime() - start]);
+    }
+  };
+
+  /**
+   * 确保识别区域在图片范围内，超范围的自动压缩宽高
+   * @param {array} region  识别区域范围[x, y, width, height]
+   * @param {int} maxWidth 最大宽度
+   * @param {int} maxHeight 最大高度
+   */
+  this.ensureRegionInScreen = function (region, maxWidth, maxHeight) {
+    var originRegion = JSON.parse(JSON.stringify(region));
+    maxWidth = maxWidth || _config.device_width;
+    maxHeight = maxHeight || _config.device_height;
+    var flag = 0;
+    if (region[0] > maxWidth || region[0] < 0) {
+      _logUtils.errorInfo(['x起始点超范围：{}', region[0]]);
+      throw new java.lang.IllegalArgumentException('x起始点超范围：' + region[0]);
+    }
+    if (region[1] > maxHeight || region[1] < 0) {
+      _logUtils.errorInfo(['y起始点超范围：{}', region[0]]);
+      throw new java.lang.IllegalArgumentException('y起始点超范围：' + region[1]);
+    }
+    var width = region[0] + region[2];
+    var height = region[1] + region[3];
+    if (width > maxWidth) {
+      region[2] = maxWidth - region[0];
+      flag = flag | 1;
+    }
+    if (height > maxHeight) {
+      region[3] = maxHeight - region[1];
+      flag = flag | 2;
+    }
+    if (flag !== 0) {
+      _logUtils.debugInfo(['检测识别区域是否超范围：{} maxW: {} maxH: {}', JSON.stringify(originRegion), maxWidth, maxHeight]);
+      if (flag & 1 === 1) {
+        _logUtils.debugInfo(['宽度超范围 修正为：{}', region[2]]);
+      }
+      if (flag & 2 === 2) {
+        _logUtils.debugInfo(['高度超范围 修正为：{}', region[3]]);
+      }
+    }
+  };
+
+  /**
+   * 获取状态栏的高度
+   * 
+   * @returns {number}
+   */
+  this.getStatusBarHeightCompat = function () {
+    var result = 0;
+    var resId = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
+    if (resId > 0) {
+      result = context.getResources().getDimensionPixelOffset(resId);
+    }
+    if (result <= 0) {
+      result = context.getResources().getDimensionPixelOffset(R.dimen.dimen_25dp);
+    }
+    return result;
+  };
+
+  /**
+   * 自动设置刘海的偏移量 即状态栏高度
+   * 通过代码方式获取
+   */
+  this.autoSetUpBangOffset = function () {
+    if (_config.auto_set_bang_offset) {
+      var offset = this.getStatusBarHeightCompat();
+      _logUtils.debugInfo(['自动设置刘海偏移量为：{}', offset]);
+      var configStorage = storages.create(_storage_name);
+      // 设为负值
+      _config.bang_offset = -offset;
+      configStorage.put('bang_offset', _config.bang_offset);
+      configStorage.put('auto_set_bang_offset', false);
+    }
+  };
+
+  /**
+   * 自动设置刘海的偏移量
+   * @deprecated 使用代码方式获取更加便捷
+   */
+  this._autoSetUpBangOffset = function (doNotRestart) {
+    if (_config.auto_set_bang_offset || _config.updated_temp_flag_1325) {
+      if (!this.requestScreenCaptureOrRestart(doNotRestart)) {
+        // 请求截图权限失败，取消设置刘海偏移量
+        return;
+      }
+      var DETECT_COLOR = '#10FF1F';
+      var window = floaty.window("\n        <frame id=\"container\" gravity=\"center\" bg=\"#10FF1F\">\n          <horizontal margin=\"10 0\" gravity=\"center\">\n            <text id=\"text\" text=\"TEXT FLOATY\" textSize=\"10sp\" />\n          </horizontal>\n        </frame>\n      ");
+      window.setPosition(100, 0);
+      // 等待悬浮窗初始化
+      sleep(300);
+      var offset = null;
+      var _limit = 10;
+      while (!offset && offset !== 0 && _limit-- > 0) {
+        var screen = this.checkCaptureScreenPermission();
+        if (screen) {
+          var point = images.findColor(screen, DETECT_COLOR, {
+            region: [80, 0, 100, 300],
+            threshold: 1
+          });
+          if (point && images.detectsColor(screen, DETECT_COLOR, point.x + 20, point.y) && images.detectsColor(screen, DETECT_COLOR, point.x + 30, point.y)) {
+            offset = point.y;
+            ui.run(function () {
+              window.text.setText('刘海偏移量为：' + offset + ' 自动关闭悬浮窗');
+            });
+            _logUtils.debugInfo(['自动设置刘海偏移量为：{}', offset]);
+            var configStorage = storages.create(_storage_name);
+            // 设为负值
+            _config.bang_offset = -offset;
+            configStorage.put('bang_offset', _config.bang_offset);
+            configStorage.put('auto_set_bang_offset', false);
+            configStorage.put('updated_temp_flag_1325', false);
+            sleep(500);
+            _logUtils.debugInfo('关闭悬浮窗');
+            window.close();
+          } else {
+            sleep(100);
+          }
+        }
+      }
+      if (_limit <= 0) {
+        ui.run(function () {
+          window.text.setText('无法自动检测刘海高度，请确认是否开启了深色模式？');
+        });
+        _logUtils.warnInfo('无法自动检测刘海高度，请确认是否开启了深色模式？');
+        sleep(500);
+        window.close();
+      }
+    }
+  };
+
+  /**
+   * 注册生命周期回调，在退出时执行func
+   * @param {function} func 回调方法
+   * @param {String} desc 过程描述
+   */
+  this.registerOnEngineRemoved = function (func, desc) {
+    desc = desc || 'common func';
+    lifecycleLock.lock();
+    var callbackId = ++idCounter;
+    try {
+      lifecycleCallbacks.push({
+        func: func,
+        desc: desc,
+        id: callbackId
+      });
+    } finally {
+      lifecycleLock.unlock();
+    }
+    return callbackId;
+  };
+
+  /**
+   * 取消生命周期回调
+   * @param {number} callbackId 回调记录的id
+   */
+  this.unregisterLifecycleCallback = function (callbackId) {
+    lifecycleLock.lock();
+    try {
+      if (lifecycleCallbacks && lifecycleCallbacks.length > 0) {
+        var callbackIdx = lifecycleCallbacks.findIndex(function (callback) {
+          return callback.id === callbackId;
+        });
+        if (callbackIdx > -1) {
+          var removedArray = lifecycleCallbacks.splice(callbackIdx, 1);
+          _logUtils.debugInfo(['移除生命周期回调，id:{} index:{} desc: {}', callbackId, callbackIdx, removedArray && removedArray.length > 0 ? removedArray[0].desc : 'unknown']);
+        } else {
+          _logUtils.debugInfo(['生命周期回调不存在，id:{}', callbackId]);
+        }
+      }
+    } finally {
+      lifecycleLock.unlock();
+    }
+  };
+  this.checkPermission = function (permission) {
+    return PackageManager.PERMISSION_GRANTED === context.getPackageManager().checkPermission(permission, context.getPackageName());
+  };
+  this.hasAdbPermission = function () {
+    return this.checkPermission('android.permission.WRITE_SECURE_SETTINGS');
+  };
+
+  /**
+   * 打开开发者选项界面
+   */
+  this.openDevelopmentSettings = function () {
+    app.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+  };
+
+  /**
+   * 获取无障碍服务的类名，防检测的修改了这个类名 所以需要通过反射获取
+   */
+  this.getAccessibilityServiceClassName = function () {
+    if (this.getAutoJsPackage().startsWith("org.autojs.autojs")) {
+      return "com.stardust.autojs.core.accessibility.AccessibilityService";
+    } else {
+      /**
+       * 适配变更包名的AutoJS，针对淘宝客户端会读取并拉黑无障碍功能中已启用AutoJS相关的用户，
+       * 可以创建一个乱七八糟包名的AutoJS并修改AccessibilityService的包名称，脚本中需要通过反射获取对应的类全名
+       */
+      try {
+        importClass(org.autojs.autojs.tool.AccessibilityServiceTool);
+        var clz = new AccessibilityServiceTool().getClass();
+        var field = clz.getDeclaredField('sAccessibilityServiceClass');
+        var typeName = field.getGenericType().getTypeName();
+        var regex = /.*<(.*)>/;
+        return regex.exec(typeName)[1];
+      } catch (e) {
+        self.printExceptionStack(e);
+        return null;
+      }
+    }
+  };
+
+  /**
+   * adb 授权命令
+   * 
+   * @returns 
+   */
+  this.getAdbGrantCmd = function () {
+    return 'adb shell pm grant ' + this.getAutoJsPackage() + ' android.permission.WRITE_SECURE_SETTINGS';
+  };
+
+  /**
+   * 校验是否已经拥有无障碍权限 没有自动获取 前提是获取了adb权限
+   * 原作者：MrChen 原始代码来自Pro商店
+   * adb授权方法：开启usb调试并使用adb工具连接手机，执行 adb shell pm grant org.autojs.autojspro android.permission.WRITE_SECURE_SETTINGS
+   * 取消授权 adb shell pm revoke org.autojs.autojspro android.permission.WRITE_SECURE_SETTINGS
+   * 其中免费版包名为 org.autojs.autojs
+   * @param {boolean} force 是否强制启用
+   */
+  this.checkAccessibilityService = function (force) {
+    var hasAdbPermission = this.hasAdbPermission();
+    if (!!auto.rootInActiveWindow && (!force || !hasAdbPermission)) {
+      // 当拥有无障碍权限时直接返回true
+      return true;
+    }
+    // 无ADB授权时直接返回false
+    if (!hasAdbPermission) {
+      return false;
+    }
+    var packageName = this.getAutoJsPackage();
+    var self = this;
+    var setAccessibility = false;
+    var accessibilityServiceClassName = this.getAccessibilityServiceClassName();
+    if (!accessibilityServiceClassName) {
+      // 无法准确获取无障碍服务名称，交由auto.waitFor()处理
+      return false;
+    }
+    var requiredService = packageName + '/' + accessibilityServiceClassName;
+    try {
+      var enabledServices = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+      _logUtils.debugInfo(['当前已启用无障碍功能的服务:{}', enabledServices]);
+      var service = null;
+      if (enabledServices.indexOf(requiredService) < 0 || enabledServices.split(':').filter(function (v) {
+        return !/^(((\w+\.)+\w+)[/]?){2}$/.test(v);
+      }).length > 1) {
+        service = enabledServices + ':' + requiredService;
+      } else if (force) {
+        // 如果强制开启
+        service = enabledServices;
+      }
+      if (service) {
+        if (_config.other_accessisibility_services) {
+          service += ':' + _config.other_accessisibility_services;
+        }
+        // 清理service 删除无效的或者不正确的
+        _logUtils.debugInfo(['准备设置无障碍权限：{}', service]);
+        var services = [];
+        service = service.split(':').filter(function (v) {
+          return /^(((\w+\.)+\w+)[/]?){2}$/.test(v);
+        }).filter(function (s) {
+          if (services.indexOf(s) > -1) {
+            return false;
+          }
+          services.push(s);
+          return true;
+        }).join(':');
+        _logUtils.debugInfo(['过滤无效内容后的services：{}', service]);
+        Settings.Secure.putString(context.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, service);
+        Settings.Secure.putString(context.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, '1');
+        _logUtils.infoLog('成功开启AutoJS的辅助服务', true);
+        !force && this.setUpAutoStart(0.1, true);
+        setAccessibility = true;
+      } else {
+        return true;
+      }
+    } catch (e) {
+      _config.develop_mode && this.printExceptionStack(e);
+      _logUtils.warnInfo('\n请确保已给予 WRITE_SECURE_SETTINGS 权限\n\n授权代码已复制，请使用adb工具连接手机执行(重启不失效)\n\n', true);
+      var shellScript = this.getAdbGrantCmd();
+      _logUtils.warnInfo('adb 脚本 已复制到剪切板：[' + shellScript + ']');
+      setClip(shellScript);
+      return false;
+    }
+    // 当通过代码设置了无障碍权限之后自动退出
+    setAccessibility && exit();
+  };
+
+  /**
+   * 确保无障碍服务已启用
+   * 
+   * @param {boolean} force 是否强制开启 仅ADB授权后有用
+   * @returns 
+   */
+  this.ensureAccessibilityEnabled = function (force) {
+    if (!this.checkAccessibilityService(force)) {
+      try {
+        _logUtils.debugInfo('无ADB授权，使用auto.waitFor()');
+        _logUtils.warnInfo('ADB授权命令：' + this.getAdbGrantCmd());
+        _logUtils.logInfo('即将跳转无障碍界面，授权完毕后会自动打开AutoJS，如果失败请手动返回，或者给与AutoJS后台弹出界面的权限', true);
+        sleep(1500);
+        auto.waitFor();
+        // waitFor执行完毕后 重新打开AutoJS界面
+        app.launch(context.getPackageName());
+        // 等待十秒钟，如果app.launch失败了等手动回到autojs界面
+        limit = 10;
+        var currentPackageName = commonFunctions.myCurrentPackage();
+        while (limit-- > 0 && currentPackageName !== context.getPackageName()) {
+          debugInfo(['当前包名：{}', currentPackageName]);
+          sleep(1000);
+          currentPackageName = commonFunctions.myCurrentPackage();
+        }
+        return true;
+      } catch (e) {
+        _logUtils.warnInfo('auto.waitFor()不可用');
+        auto();
+      }
+    }
+    return true;
+  };
+
+  /**
+   * 获取已授权的无障碍服务
+   * @returns 
+   */
+  this.getEnabledAccessibilityServices = function () {
+    if (this.hasAdbPermission()) {
+      return Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) || '';
+    }
+    return '';
+  };
+
+  /**
+   * 关闭无障碍权限，并重启脚本
+   */
+  this.disableAccessibilityAndRestart = function (notRestart) {
+    if (!this.hasAdbPermission()) {
+      _logUtils.warnInfo('未通过ADB授权，无法自动关闭无障碍权限，交由后续处理');
+      return;
+    }
+    try {
+      var accessibilityServiceClassName = this.getAccessibilityServiceClassName();
+      var requiredService = this.getAutoJsPackage() + '/' + accessibilityServiceClassName;
+      var enabledServices = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) || '';
+      enabledServices = enabledServices.replace(requiredService, '').split(':').filter(function (v) {
+        return /^(((\w+\.)+\w+)[/]?){2}$/.test(v);
+      }).join(':');
+      Settings.Secure.putString(context.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, enabledServices);
+      Settings.Secure.putString(context.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, '1');
+      _logUtils.warnInfo('关闭无障碍服务成功', true);
+      if (notRestart) {
+        return;
+      }
+      this.setUpAutoStart(0.1, true);
+      exit();
+    } catch (e) {
+      _logUtils.warnInfo(['无法自动关闭无障碍权限，交由后续处理: {}', e]);
+    }
+  };
+  this.captureScreen = function (errorLimit, releaseLock) {
+    return this.checkCaptureScreenPermission(errorLimit, releaseLock);
+  };
+
+  /**
+   * 校验截图权限，权限失效则重新启动，根据参数释放任务队列
+   * @param {number} errorLimit 失败尝试次数
+   * @param {boolean} releaseLock 是否在失败后释放任务队列
+   */
+  this.checkCaptureScreenPermission = function (errorLimit, releaseLock) {
+    this.requestScreenCaptureOrRestart();
+    captureScreenLock.lock();
+    try {
+      var screen = null;
+      var start = new Date().getTime();
+      if (!_config.async_waiting_capture) {
+        _logUtils.debugInfo('同步获取截图');
+        screen = captureScreen();
+      } else {
+        errorLimit = errorLimit || 2;
+        // 获取截图 用于判断是否可收取
+        var errorCount = 0;
+        do {
+          var waitResult = this.waitFor(function () {
+            var max_try = 10;
+            while (!screen && max_try-- > 0) {
+              screen = captureScreen();
+            }
+          }, _config.capture_waiting_time || 500);
+          if (!screen) {
+            _logUtils.warnInfo(['获取截图失败 {} {} count:{}', !waitResult ? '等待截图超时' + (errorCount++ == errorLimit - 1 ? ', 建议将获取截图超时时间加长' : '') : '获取截图为NULL', errorCount < errorLimit ? '再试一次' : '', errorCount]);
+            // 滑动界面，触发渲染
+            _logUtils.debugInfo('获取截图失败，尝试滑动界面，触发渲染');
+            automator.scrollUpAndDown();
+            // 延迟
+            sleep(300);
+          }
+        } while (!screen && errorCount < errorLimit);
+        if (!screen) {
+          automator.scrollUp();
+          // 释放并重新获取截图权限
+          var requestPermission = capturePermissionResolver.releaseAndRequestScreenCapture();
+          if (requestPermission) {
+            return this.checkCaptureScreenPermission(1, releaseLock);
+          }
+          _logUtils.errorInfo(['获取截图失败多次[{}], 可能已经没有了截图权限，且重新申请权限失败重新执行脚本', errorCount], true);
+          automator.back();
+          if (releaseLock) {
+            _runningQueueDispatcher.removeRunningTask(true);
+          } else {
+            // 用于取消下一次运行的dialog
+            this.getAndUpdateDismissReason('capture-screen-error');
+          }
+          _runningQueueDispatcher.executeTargetScript(this.getRunningScriptSource());
+          _config.resetBrightness && _config.resetBrightness();
+          exit();
+        }
+      }
+      _logUtils.debugInfo(['获取截图耗时：{}ms', new Date().getTime() - start]);
+      return screen;
+    } finally {
+      captureScreenLock.unlock();
+    }
+  };
+  this.getAutoJsPackage = function () {
+    return context.getPackageName();
+  };
+  this.getAndUpdateDismissReason = function (newVal) {
+    var storedDismissDialogInfo = this.getTodaysRuntimeStorage(DISMISS_AWAIT_DIALOG);
+    var oldVal = storedDismissDialogInfo.dismissReason;
+    storedDismissDialogInfo.dismissReason = newVal;
+    this.updateRuntimeStorage(DISMISS_AWAIT_DIALOG, storedDismissDialogInfo);
+    return oldVal;
+  };
+
+  /**
+   * 启动package
+   * @param packageName 需要启动的package名称
+   */
+  this.launchPackage = function (packageName) {
+    _logUtils.debugInfo(['准备打开package: {}', packageName]);
+    var currentRunning = currentPackage();
+    app.launchPackage(packageName);
+    sleep(1000);
+    currentRunning = currentPackage();
+    var waitCount = 3;
+    while (currentRunning !== packageName && waitCount-- > 0) {
+      sleep(100);
+      currentRunning = currentPackage();
+    }
+    _logUtils.debugInfo(['进入[{}] {}', packageName, packageName === currentRunning ? '成功' : '失败']);
+  };
+  this.clickBackOrClose = function (packageName) {
+    var getCurrentPkgName = currentPackage();
+    _logUtils.debugInfo(['当前包名：{} 对比包名: {}', getCurrentPkgName, packageName]);
+    if (getCurrentPkgName !== packageName) {
+      return false;
+    }
+    if (!this._widgetUtils) {
+      this._widgetUtils = __webpack_require__(/*! @/lib/prototype/WidgetUtils */ "./src/lib/prototype/WidgetUtils.js");
+    }
+    var backOrColse = this._widgetUtils.widgetGetOne('返回|关闭', 500);
+    getCurrentPkgName = currentPackage();
+    _logUtils.debugInfo(['二次获取当前包名：{} 对比包名: {}', getCurrentPkgName, packageName]);
+    if (getCurrentPkgName !== packageName) {
+      return false;
+    }
+    if (backOrColse) {
+      automator.clickCenter(backOrColse);
+    } else {
+      back();
+    }
+    return true;
+  };
+  this.minimize = function (currentPackageName) {
+    currentPackageName = currentPackageName || currentPackage();
+    _logUtils.debugInfo(['直接返回最小化，currentPackageName: {}', currentPackageName]);
+    try {
+      var maxRepeat = 10;
+      while (maxRepeat-- > 0 && this.clickBackOrClose(currentPackageName)) {
+        sleep(500);
+      }
+      var getCurrentPkgName = currentPackage();
+      _logUtils.debugInfo(['最后一次获取包名：{} 对比目标包名：{}', getCurrentPkgName, currentPackageName]);
+      if (getCurrentPkgName === currentPackageName) {
+        back();
+      }
+    } catch (e) {
+      _logUtils.errorInfo('尝试返回失败' + e);
+      this.printExceptionStack(e);
+    }
+  };
+
+  /**
+   * 用于保存相似内容，${STORAGE_TAG} => { packageName: ${}, count: ${} }
+   * 当传入包名相同时自增count，不同时重置count和packageName
+   * 
+   * @param {*} packageName 对应包名
+   * @param {*} STORAGE_TAG 对应保存的键值
+   */
+  this.savePackageStorageInfo = function (packageName, STORAGE_TAG) {
+    var currentStorage = storageFactory.getValueByKey(STORAGE_TAG, true);
+    if (currentStorage.packageName === packageName) {
+      currentStorage.count += 1;
+    } else {
+      currentStorage = {
+        packageName: packageName,
+        count: 1
+      };
+    }
+    storageFactory.updateValueByKey(STORAGE_TAG, currentStorage);
+  };
+
+  /**
+   * 保存点击了延迟五分钟时的包名次数信息
+   * 
+   * @param {*} packageName 
+   */
+  this.saveDismissedPackageInfo = function (packageName) {
+    this.savePackageStorageInfo(packageName, DISMISSED_PACKAGE);
+  };
+
+  /**
+   * 判断指定packageName是否在白名单中
+   * 
+   * @param {*} packageName 
+   */
+  this.inSkipList = function (packageName) {
+    return _config.skip_running_packages && _config.skip_running_packages.map(function (v) {
+      return v.packageName;
+    }).indexOf(packageName) > -1;
+  };
+
+  /**
+   * 检测当前packageName跳过次数是否达到三次，如果是则弹窗询问是否加入到白名单中
+   */
+  this.askAndPutIntoSkipList = function () {
+    var currentDismissedPackage = storageFactory.getValueByKey(DISMISSED_PACKAGE, true);
+    if (currentDismissedPackage.packageName && currentDismissedPackage.count >= 3 && !this.inSkipList(currentDismissedPackage.packageName)) {
+      if (confirm('是否需要将当前包名添加到白名单？\n' + currentDismissedPackage.packageName)) {
+        var currentSkipPackages = _config.skip_running_packages || [];
+        currentSkipPackages.push({
+          packageName: currentDismissedPackage.packageName,
+          appName: getAppName(currentDismissedPackage.packageName)
+        });
+        var configStorage = storages.create(_storage_name);
+        configStorage.put('skip_running_packages', currentSkipPackages);
+      }
+    }
+  };
+
+  /**
+   * 保存白名单自动跳过的包名次数信息
+   * 
+   * @param {*} packageName 
+   */
+  this.saveSkipedPackageInfo = function (packageName) {
+    this.savePackageStorageInfo(packageName, SKIPPED_PACKAGE);
+  };
+
+  /**
+   * 当白名单跳过次数过多时，询问是否直接运行不在跳过，适合需要时限的任务避免跳过次数过多影响收益
+   * 按音量下键可以直接运行
+   */
+  this.askIfStartWhenSkipedTooMuch = function () {
+    var currentSkippedPackage = storageFactory.getValueByKey(SKIPPED_PACKAGE, true);
+    if (currentSkippedPackage.count >= 3 && _config.warn_skipped_too_much) {
+      _logUtils.warnInfo(['当前包名跳过次数过多，是否直接执行{}？音量下键执行', project_name], true);
+      var continueRunning = false;
+      var _self = this;
+      var th = threads.start(function () {
+        events.observeKey();
+        events.onceKeyDown('volume_down', function (event) {
+          _logUtils.warnInfo('直接执行，不再跳过', true);
+          continueRunning = true;
+          // 重置计数器
+          _self.saveSkipedPackageInfo('');
+        });
+      });
+      // 等待五秒
+      sleep(5000);
+      th.interrupt();
+      return continueRunning;
+    }
+    return false;
+  };
+
+  /**
+   * @param checkDismissReason 是否校验跳过弹窗
+   * @param notCheckUpdate 跳过更新校验
+   * @param taskName 任务名称
+   */
+  this.showDialogAndWait = function (checkDismissReason, notCheckUpdate, taskName) {
+    // 显示悬浮窗之前关闭按键监听，避免操作不当导致界面卡死
+    events.removeAllKeyDownListeners('volume_down');
+    if (this.inLimitTimeRange()) {
+      _logUtils.warnInfo('当前在限制运行时间范围，停止运行', true);
+      exit();
+    }
+    var currentPackageName = currentPackage();
+    if (checkDismissReason) {
+      var dismissReason = this.getAndUpdateDismissReason('');
+      if (dismissReason) {
+        _logUtils.debugInfo(['不再展示延迟对话框，{}', dismissReason]);
+        return;
+      }
+    }
+    if (_config.delayStartTime <= 0) {
+      _logUtils.debugInfo(['延迟启动时间[{}]小于等于0，不展示对话框', _config.delayStartTime]);
+      return;
+    }
+    var continueRunning = true;
+    var terminate = false;
+    var showDialog = true;
+    var lock = threads.lock();
+    var complete = lock.newCondition();
+    var that = this;
+    lock.lock();
+    threads.start(function () {
+      _logUtils.debugInfo(['自动检测更新：{}', _config.auto_check_update]);
+      var suffixContent = notCheckUpdate ? function () {
+        return '';
+      } : function () {
+        var newVersion = updateChecker.hasNewVersion();
+        var suffix = '';
+        if (newVersion) {
+          suffix = '，有新版本：' + newVersion + ' 请执行更新脚本进行更新, 本地版本为：' + updateChecker.getLocalVersion();
+          _logUtils.warnInfo(['当前有新版本: {}，请运行可视化配置点击右上角菜单进行更新', newVersion], true);
+        }
+        return suffix;
+      };
+      var sleepCount = _config.delayStartTime || 5;
+      var confirmDialog = dialogs.build({
+        title: '即将开始' + (taskName || project_name),
+        content: '将在' + sleepCount + '秒内开始' + suffixContent(),
+        positive: '立即开始',
+        positiveColor: '#f9a01c',
+        negative: '终止',
+        negativeColor: 'red',
+        neutral: '延迟五分钟',
+        cancelable: false
+      }).on('positive', function () {
+        lock.lock();
+        try {
+          complete.signal();
+        } finally {
+          lock.unlock();
+        }
+        showDialog = false;
+        confirmDialog.dismiss();
+      }).on('negative', function () {
+        continueRunning = false;
+        terminate = true;
+        lock.lock();
+        try {
+          complete.signal();
+        } finally {
+          lock.unlock();
+        }
+        showDialog = false;
+        confirmDialog.dismiss();
+      }).on('neutral', function () {
+        continueRunning = false;
+        lock.lock();
+        try {
+          complete.signal();
+        } finally {
+          lock.unlock();
+        }
+        that.saveDismissedPackageInfo(currentPackageName);
+        showDialog = false;
+        confirmDialog.dismiss();
+      }).show();
+      _logUtils.debugInfo(['isShowing：{} isCanceled: {}', confirmDialog.isShowing(), confirmDialog.isCancelled()]);
+      // 注册当脚本中断时隐藏弹出框
+      var callbackId = that.registerOnEngineRemoved(function () {
+        _logUtils.infoLog('生命周期结束，准备关闭弹窗');
+        if (confirmDialog) {
+          confirmDialog.dismiss();
+          confirmDialog.removeAllListeners();
+        }
+      });
+      while (sleepCount-- > 0 && showDialog) {
+        sleep(1000);
+        confirmDialog.setContent('将在' + sleepCount + '秒内开始' + suffixContent());
+      }
+      confirmDialog.setContent('即将开始');
+      sleep(500);
+      lock.lock();
+      try {
+        complete.signal();
+      } finally {
+        lock.unlock();
+      }
+      confirmDialog.dismiss();
+      confirmDialog.removeAllListeners();
+      that.unregisterLifecycleCallback(callbackId);
+    });
+    // 加载最新版本
+    !notCheckUpdate && updateChecker.getLatestInfo();
+    try {
+      complete["await"]();
+    } finally {
+      lock.unlock();
+    }
+    if (terminate) {
+      _logUtils.warnInfo('中止执行');
+      _config.resetBrightness && _config.resetBrightness();
+      this.cancelAllTimedTasks();
+      _runningQueueDispatcher.removeRunningTask();
+      // 不需要锁屏
+      _config.notNeedRelock = true;
+      exit();
+    }
+    if (continueRunning) {
+      _logUtils.logInfo('立即开始');
+      // 重置计数
+      this.saveDismissedPackageInfo('');
+      engines.myEngine().execArgv.executeByDispatcher && this.ensureDeviceSizeValid();
+    } else {
+      this.askAndPutIntoSkipList();
+      _logUtils.logInfo('延迟五分钟后开始');
+      _config.resetBrightness && _config.resetBrightness();
+      this.setUpAutoStart(5, true);
+      _runningQueueDispatcher.removeRunningTask();
+      exit();
+    }
+  };
+
+  /**
+   * 子任务对话框
+   * 
+   * @param taskName 任务名称
+   */
+  this.showCommonDialogAndWait = function (taskName) {
+    this.showDialogAndWait(true, true, taskName);
+  };
+
+  /**
+   * 关闭悬浮窗并将floatyWindow置为空，在下一次显示时重新新建悬浮窗 因为close之后的无法再次显示
+   */
+  this.closeFloatyWindow = function () {
+    _FloatyInstance.close();
+  };
+  this.showMiniFloaty = function (text, x, y, color) {
+    _FloatyInstance.setFloatyInfo({
+      x: x || _config.min_floaty_x || 150,
+      y: y || _config.min_floaty_y || 20
+    }, text, {
+      textSize: _config.min_floaty_text_size || 8
+    });
+    _FloatyInstance.setFloatyTextColor(color || _config.min_floaty_color || '#00FF00');
+  };
+
+  /**
+   * 显示悬浮窗 根据配置自动显示mini悬浮窗和可关闭悬浮窗，目前来说不推荐使用可关闭悬浮窗
+   * @param text {String} 悬浮窗文字内容
+   */
+  this.showTextFloaty = function (text) {
+    this.showMiniFloaty(text);
+  };
+
+  /**
+   * 监听音量下键延迟执行
+   **/
+  this.listenDelayStart = function () {
+    threads.start(function () {
+      _logUtils.infoLog('即将开始，按音量下键延迟五分钟执行', true);
+      sleep(2000);
+      _logUtils.debugInfo('after setMaxListeners');
+      events.observeKey();
+      _logUtils.debugInfo('after observeKey');
+      events.onceKeyDown('volume_down', function (event) {
+        _config.resetBrightness && _config.resetBrightness();
+        _config.auto_lock = false;
+        _logUtils.warnInfo('延迟五分钟后启动脚本', true);
+        _this.setUpAutoStart(5);
+        _runningQueueDispatcher.removeRunningTask();
+        exit();
+      });
+      _logUtils.debugInfo('after setOnceKeyDown');
+    });
+  };
+
+  /**
+   * 获取当天的缓存信息，不存在时创建一个初始值
+   * @param key {String} key名称
+   */
+  this.getTodaysRuntimeStorage = function (key) {
+    return storageFactory.getValueByKey(key);
+  };
+
+  /**
+   * 获取无过期时间的缓存信息，不存在时创建一个初始值
+   * @param key {String} key名称
+   */
+  this.getFullTimeRuntimeStorage = function (key) {
+    return storageFactory.getValueByKey(key, true);
+  };
+
+  /**
+   * 更新缓存数据
+   * 
+   * @param {string} key 
+   * @param {object} value 
+   * @returns 
+   */
+  this.updateRuntimeStorage = function (key, value) {
+    return storageFactory.updateValueByKey(key, value);
+  };
+
+  /**
+   * 选择性更新缓存数据
+   * 
+   * @param {string} key 
+   * @param {function} callback 
+   * @returns 
+   */
+  this.updateStorageInfo = function (key, callback) {
+    return storageFactory.updateValueByKey(key, callback(storageFactory.getValueByKey(key, true)));
+  };
+  this.parseToZero = function (value) {
+    return !value || isNaN(value) ? 0 : parseInt(value);
+  };
+  this.isEmpty = function (val) {
+    return val === null || typeof val === 'undefined' || val === '';
+  };
+  this.isEmptyArray = function (array) {
+    return array === null || typeof array === 'undefined' || array.length === 0;
+  };
+  this.isNotEmpty = function (val) {
+    return !this.isEmpty(val) && !this.isEmptyArray(val);
+  };
+  this.addOpenPlacehold = function (content) {
+    content = "<<<<<<<" + (content || "") + ">>>>>>>";
+    _logUtils.appendLog(content);
+    console.verbose(content);
+  };
+  this.addClosePlacehold = function (content) {
+    content = ">>>>>>>" + (content || "") + "<<<<<<<";
+    _logUtils.appendLog(content);
+    console.verbose(content);
+  };
+
+  /**
+   * @deprecated: see RunningQueueDispatcher$addRunningTask
+   * 校验是否重复运行 如果重复运行则关闭当前脚本
+   */
+  this.checkDuplicateRunning = function () {
+    var currentEngine = engines.myEngine();
+    var runningEngines = engines.all();
+    var runningSize = runningEngines.length;
+    var currentSource = currentEngine.getSource() + '';
+    _logUtils.debugInfo('当前脚本信息 id:' + currentEngine.id + ' source:' + currentSource + ' 运行中脚本数量：' + runningSize);
+    if (runningSize > 1) {
+      runningEngines.forEach(function (engine) {
+        var compareEngine = engine;
+        var compareSource = compareEngine.getSource() + '';
+        _logUtils.debugInfo('对比脚本信息 id:' + compareEngine.id + ' source:' + compareSource);
+        if (currentEngine.id !== compareEngine.id && compareSource === currentSource) {
+          _logUtils.warnInfo('脚本正在运行中 退出当前脚本：' + currentSource, true);
+          _runningQueueDispatcher.removeRunningTask(true);
+          exit();
+        }
+      });
+    }
+  };
+
+  /**
+   * 关闭运行中的脚本 关闭全部同源脚本
+   */
+  this.killRunningScript = function (forceMain) {
+    var runningEngines = engines.all();
+    var runningSize = runningEngines.length;
+    var mainScriptJs = this.getRunningScriptSource(forceMain);
+    if (runningSize > 1) {
+      runningEngines.forEach(function (engine) {
+        var compareEngine = engine;
+        var compareSource = compareEngine.getSource() + '';
+        _logUtils.debugInfo('对比脚本信息 id:' + compareEngine.id + ' source:' + compareSource);
+        if (compareSource === mainScriptJs) {
+          _logUtils.warnInfo(['关闭运行中脚本：id[{}]', compareEngine.id], true);
+          engine.forceStop();
+        }
+      });
+    }
+  };
+
+  /**
+   * 杀死重复运行的同源脚本
+   */
+  this.killDuplicateScript = function () {
+    var currentEngine = engines.myEngine();
+    var runningEngines = null;
+    while (runningEngines === null) {
+      // engines.all()有并发问题，尝试多次获取
+      try {
+        runningEngines = engines.all();
+      } catch (e) {
+        sleep(200);
+      }
+    }
+    var runningSize = runningEngines.length;
+    var currentSource = currentEngine.getSource() + '';
+    _logUtils.debugInfo('当前脚本信息 id:' + currentEngine.id + ' source:' + currentSource + ' 运行中脚本数量：' + runningSize);
+    if (runningSize > 1) {
+      runningEngines.forEach(function (engine) {
+        var compareEngine = engine;
+        var compareSource = compareEngine.getSource() + '';
+        _logUtils.debugInfo('对比脚本信息 id:' + compareEngine.id + ' source:' + compareSource);
+        if (currentEngine.id !== compareEngine.id && compareSource === currentSource) {
+          _logUtils.warnInfo(['currentId：{} 退出运行中的同源脚本id：{}', currentEngine.id, compareEngine.id]);
+          // 直接关闭同源的脚本，暂时可以无视锁的存在
+          engine.forceStop();
+        }
+      });
+    }
+  };
+
+  /**
+   * 设置指定时间后自动启动main脚本
+   * 
+   * @param {float} minutes 倒计时时间 单位分
+   * @param {boolean} forceSetup 必须设置的定时任务
+   */
+  this.setUpAutoStart = function (minutes, forceSetup) {
+    if (!forceSetup && _config.not_setup_auto_start && _config.disable_all_auto_start) {
+      return;
+    }
+    if (minutes <= 0) {
+      var newRandomMinutes = parseFloat((0.01 + Math.random()).toFixed(2));
+      _logUtils.errorInfo(['倒计时时间必须大于零：{} 现在将倒计时重置为： {}', minutes, newRandomMinutes]);
+      minutes = newRandomMinutes;
+    }
+    // 先移除所有已设置的定时任务
+    this.cancelAllTimedTasks();
+    // 非main.js启动时 设置当前执行的脚本的定时
+    var mainScriptJs = this.getRunningScriptSource();
+    var millis = new Date().getTime() + minutes * 60 * 1000;
+    _logUtils.infoLog(['预订[{}]分钟后的任务，时间：{}({})', minutes, formatDate(new Date(millis)), millis]);
+    // 预定一个{minutes}分钟后的任务
+    var task = Timers.addDisposableTask({
+      path: mainScriptJs,
+      date: millis
+    });
+    _logUtils.debugInfo("定时任务预定成功: " + task.id);
+    this.recordTimedTask(task);
+  };
+  this.recordTimedTask = function (task) {
+    var array = storageFactory.getValueByKey(TIMER_AUTO_START, true).array;
+    array.push(task);
+    storageFactory.updateValueByKey(TIMER_AUTO_START, {
+      array: array
+    });
+  };
+  this.showAllAutoTimedTask = function () {
+    var array = storageFactory.getValueByKey(TIMER_AUTO_START, true).array;
+    if (array && array.length > 0) {
+      array.forEach(function (task) {
+        _logUtils.logInfo(['定时任务 mId: {} sourcePath: {} 目标执行时间: {} 剩余时间: {}秒', task.mId, task.mScriptPath, formatDate(new Date(task.mMillis), 'yyyy-MM-dd HH:mm:ss'), ((task.mMillis - new Date().getTime()) / 1000.0).toFixed(0)]);
+      });
+    } else {
+      _logUtils.logInfo('当前没有自动设置的定时任务');
+    }
+  };
+  this.cancelAllTimedTasks = function (forceMain) {
+    var array = storageFactory.getValueByKey(TIMER_AUTO_START, true).array || [];
+    if (array && array.length > 0) {
+      _logUtils.debugInfo(['当前已注册的定时任务：{}', JSON.stringify(array)]);
+      var allTimedTasks = (Timers.queryTimedTasks() || []).reduce(function (a, b) {
+        a[b.id] = b;
+        return a;
+      }, {});
+      var mainScriptJs = this.getRunningScriptSource(forceMain);
+      _logUtils.debugInfo(['当前执行脚本: {}', mainScriptJs]);
+      array = array.filter(function (task) {
+        if (task.mScriptPath === mainScriptJs) {
+          _logUtils.debugInfo('撤销自动任务：' + JSON.stringify(task));
+          if (task.mId) {
+            Timers.removeTimedTask(task.mId);
+          }
+          return false;
+        }
+        return !!allTimedTasks[task.mId];
+      });
+    }
+    // 将task队列置为剩余的
+    storageFactory.updateValueByKey(TIMER_AUTO_START, {
+      array: array
+    });
+  };
+
+  /**
+   * 杀死当前APP 仅适用于MIUI10+ 全面屏手势操作
+   */
+  this.killCurrentApp = function () {
+    if (_config.killAppWithGesture) {
+      recents();
+      sleep(1000);
+      gesture(320, [240, 1000], [800, 1000]);
+    }
+  };
+  this.waitFor = function (action, timeout) {
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var actionSuccess = false;
+    var actionThread = null;
+    var that = this;
+    try {
+      var start = new Date().getTime();
+      actionThread = threads.start(function () {
+        try {
+          action();
+          actionSuccess = true;
+        } catch (e) {
+          if (e.javaException instanceof com.stardust.autojs.runtime.exception.ScriptInterruptedException) {
+            return;
+          }
+          _logUtils.warnInfo('action执行异常' + e);
+          that.printExceptionStack(e);
+        } finally {
+          countDown.countDown();
+        }
+        _logUtils.debugInfo(['action执行结束: {} 耗时：{}ms', actionSuccess, new Date().getTime() - start]);
+      });
+      var waitResult = countDown["await"](timeout, java.util.concurrent.TimeUnit.MILLISECONDS);
+      _logUtils.debugForDev(['waitFor方法执行完毕，action result: {}, wait result: {} cost time: {}ms', actionSuccess, waitResult, new Date().getTime() - start]);
+      if (!waitResult) {
+        _logUtils.warnInfo(['等待操作超时, 操作时间: {}ms', new Date().getTime() - start]);
+      }
+    } catch (e) {
+      this.printExceptionStack(e);
+    } finally {
+      if (actionThread !== null) {
+        actionThread.interrupt();
+      }
+    }
+    return actionSuccess;
+  };
+  this.createQueue = function (size) {
+    var queue = [];
+    for (var i = 0; i < size; i++) {
+      queue.push(i);
+    }
+    return queue;
+  };
+  this.getQueueDistinctSize = function (queue) {
+    return queue.reduce(function (a, b) {
+      if (a.indexOf(b) < 0) {
+        a.push(b);
+      }
+      return a;
+    }, []).length;
+  };
+  this.pushQueue = function (queue, size, val) {
+    if (queue.length >= size) {
+      queue.shift();
+    }
+    queue.push(val);
+  };
+
+  /**
+  * eg. params '参数名：{} 参数内容：{}', name, value
+  *     result '参数名：name 参数内容：value'
+  * 格式化字符串，定位符{}
+  */
+  this.formatString = function () {
+    var originContent = [];
+    for (var arg in arguments) {
+      originContent.push(arguments[arg]);
+    }
+    if (originContent.length === 1) {
+      return originContent[0];
+    }
+    var marker = originContent[0];
+    var args = originContent.slice(1);
+    var regex = /(\{\})/g;
+    var matchResult = marker.match(regex);
+    if (matchResult && args && matchResult.length > 0 && matchResult.length === args.length) {
+      args.forEach(function (item, idx) {
+        marker = marker.replace('{}', item);
+      });
+      return marker;
+    } else {
+      console.error('参数数量不匹配' + arguments);
+      return arguments;
+    }
+  };
+
+  /**
+   * 设置当前脚本即将运行，防止被定时运行的打断
+   */
+  this.setReady = function (seconds) {
+    var targetMillis = new Date().getTime() + (seconds + 5) * 1000;
+    storageFactory.updateValueByKey(READY, {
+      engineId: ENGINE_ID,
+      timeout: targetMillis
+    });
+    _logUtils.debugInfo(['设置当前脚本即将运行，id: {}, targetMillis: {}', ENGINE_ID, targetMillis]);
+  };
+
+  /**
+   * 校验是否有同脚本运行中，如果有则等待一定时间避免抢占前台
+   */
+  this.checkAnyReadyAndSleep = function () {
+    var readyInfo = storageFactory.getValueByKey(READY, true);
+    if (readyInfo.engineId > 0) {
+      var readyEnginId = readyInfo.engineId;
+      var leftMillis = readyInfo.timeout - new Date().getTime();
+      if (leftMillis <= 0) {
+        // 可能是上一次执行的ready数据，直接跳过等待
+        return;
+      }
+      if (engines.all().find(function (engine) {
+        return engine.id === readyEnginId;
+      })) {
+        _logUtils.warnInfo(['有脚本:[{}]即将运行, 中断执行', readyEnginId]);
+        exit();
+      }
+    }
+  };
+
+  /**
+   * 悬浮窗延迟一段时间 该方法不能滥用 部分流程涉及重新获取截图权限等 谨慎使用
+   * 
+   * @param {number} minutes 延迟的分钟数 支持小数
+   * @param {string|null} text    显示具体原因
+   * @param {boolean} removeRunningTask 是否移除运行队列
+   * @param {boolean} stopByMessage 是否在接收到指定消息后停止倒计时
+   * @returns 
+   */
+  this.commonDelay = function (minutes, text, removeRunningTask, stopByMessage) {
+    _logUtils.debugInfo('倒计时' + minutes);
+    // 主动移除运行中任务
+    removeRunningTask && _runningQueueDispatcher.removeRunningTask();
+    if (typeof text === 'undefined' || text === '') {
+      text = '距离下次运行还有[';
+    }
+    minutes = (0, _typeof2["default"])(minutes) != null ? minutes : 0;
+    if (minutes === 0) {
+      return;
+    }
+    var startTime = new Date().getTime();
+    var timestampGap = minutes * 60000;
+    if (stopByMessage) {
+      _logUtils.debugInfo('监听能量雨脚本执行完毕的通知', true);
+      processShare.subscribe(function (str) {
+        _logUtils.debugInfo(['收到消息，停止延迟: {}', str]);
+        startTime = new Date().getTime() - timestampGap + 10000;
+      }, timestampGap / 1000);
+    } else if (minutes > 5 && _config.release_screen_capture_when_waiting) {
+      // 五分钟以上的 释放截图权限 降低CPU占用率
+      try {
+        runtime.images.releaseScreenCapturer();
+        _config._releasedScreenCapturer = true;
+        _config.has_screen_capture_permission = false;
+      } catch (e) {
+        _logUtils.errorInfo('主动释放截图权限异常' + e);
+      }
+    }
+    var i = 0;
+    var delayLogStampPoint = -1;
+    var delayLogGap = 0;
+    var showSeconds = false;
+    var setReady = false;
+    for (;;) {
+      var now = new Date().getTime();
+      if (now - startTime > timestampGap) {
+        break;
+      }
+      i = (now - startTime) / 60000;
+      var left = minutes - i;
+      if (!showSeconds) {
+        delayLogGap = i - delayLogStampPoint;
+        // 半分钟打印一次日志
+        if (delayLogGap >= 0.5) {
+          delayLogStampPoint = i;
+          var content = this.formatString('{}{}]分', text, left.toFixed(2));
+          this.showTextFloaty(content);
+          _logUtils.debugInfo(content);
+        }
+        // 剩余一分钟时显示为秒
+        if (showSeconds === false && left <= 1) {
+          this.listenDelayStart();
+          showSeconds = true;
+        }
+        sleep(500);
+      } else {
+        var leftSeconds = parseInt(left * 60);
+        if (!setReady && leftSeconds < 10) {
+          // 即将运行前十秒 设置标记 避免当前脚本被杀
+          this.setReady(left * 60);
+          setReady = true;
+        }
+        var _content = this.formatString('{}{}]秒', text, leftSeconds);
+        this.showTextFloaty(_content);
+        sleep(1000);
+      }
+    }
+    // 倒计时结束 重新加入任务
+    removeRunningTask && _runningQueueDispatcher.addRunningTask();
+  };
+
+  /**
+   * 将当日运行时数据导出
+   */
+  this.exportRuntimeStorage = function () {
+    var runtimeStorageInfo = {
+      storageName: RUNTIME_STORAGE,
+      storeList: []
+    };
+    var runtimeStorages = storages.create(RUNTIME_STORAGE);
+    this.keyList.forEach(function (key) {
+      var storageStr = runtimeStorages.get(key);
+      _logUtils.debugInfo(['导出运行数据 key「{}」value 「{}」', key, storageStr]);
+      runtimeStorageInfo.storeList.push({
+        key: key,
+        storageStr: storageStr
+      });
+    });
+    _logUtils.infoLog('运行时数据导出成功', true);
+    return JSON.stringify(runtimeStorageInfo);
+  };
+
+  /**
+   * 导入并覆盖当日运行时数据
+   */
+  this.importRuntimeStorage = function (str) {
+    var runtimeStorageInfo = JSON.parse(str);
+    if (runtimeStorageInfo && runtimeStorageInfo.storageName && runtimeStorageInfo.storeList && runtimeStorageInfo.storeList.length > 0) {
+      var runtimeStorages = storages.create(runtimeStorageInfo.storageName);
+      runtimeStorageInfo.storeList.forEach(function (r) {
+        _logUtils.debugInfo(['导入运行数据 key「{}」value 「{}」', r.key, r.storageStr]);
+        runtimeStorages.put(r.key, r.storageStr);
+      });
+      _logUtils.infoLog('运行时数据导入成功', true);
+      return true;
+    }
+    return false;
+  };
+  this.printExceptionStack = function (e) {
+    if (e) {
+      _logUtils.errorInfo(['fileName:{} line:{} typeof e:{}', e.fileName, e.lineNumber, (0, _typeof2["default"])(e)]);
+      var throwable = null;
+      if (e.javaException) {
+        throwable = e.javaException;
+      } else if (e.rhinoException) {
+        throwable = e.rhinoException;
+      }
+      if (throwable) {
+        var scriptTrace = new StringBuilder(e.message == null ? '' : e.message + '\n');
+        var stringWriter = new StringWriter();
+        var writer = new PrintWriter(stringWriter);
+        throwable.printStackTrace(writer);
+        writer.close();
+        var bufferedReader = new BufferedReader(new StringReader(stringWriter.toString()));
+        var line;
+        while ((line = bufferedReader.readLine()) != null) {
+          scriptTrace.append("\n").append(line);
+        }
+        var errorStr = scriptTrace.toString();
+        _logUtils.errorInfo(errorStr);
+        return errorStr;
+      } else {
+        var funcs = Object.getOwnPropertyNames(e);
+        for (var idx in funcs) {
+          var func_name = funcs[idx];
+          console.verbose(func_name);
+        }
+      }
+    }
+  };
+  this.getDistanceAndGravity = function (time) {
+    time = time || 1000;
+    var disposable = threads.disposable();
+    sensors.ignoresUnsupportedSensor = true;
+    var count = 0;
+    var start = new Date().getTime();
+    var ax = 0,
+      ay = 0,
+      az = 0;
+    //监听数据
+    sensors.register('gravity', sensors.delay.fastest).on('change', function (event, gx, gy, gz) {
+      count++;
+      _logUtils.debugForDev(util.format("[%d]重力加速度: %d, %d, %d", count, gx, gy, gz));
+      ax += Math.abs(gx);
+      ay += Math.abs(gy);
+      az += Math.abs(gz);
+      if (new Date().getTime() - start > time) {
+        _logUtils.debugInfo(util.format('总数：%d [%d, %d, %d]', count, ax, ay, az));
+        disposable.setAndNotify({
+          ax: ax / count,
+          ay: ay / count,
+          az: az / count
+        });
+      }
+    });
+    var distanceCount = 0;
+    var totalDistance = 0;
+    sensors.register("proximity", sensors.delay.fastest).on("change", function (event, d) {
+      _logUtils.debugForDev(util.format("当前距离: %d", d));
+      totalDistance += d;
+      distanceCount++;
+    });
+    var result = disposable.blockedGet();
+    var averageDistance = totalDistance / distanceCount;
+    _logUtils.debugInfo(util.format('距离总数: %d, 总距离: %d', distanceCount, totalDistance));
+    _logUtils.debugInfo(util.format('平均重力加速度：%d %d %d 平均距离：%d', result.ax, result.ay, result.az, averageDistance));
+    sensors.unregisterAll();
+    return {
+      x: result.ax,
+      y: result.ay,
+      z: result.az,
+      distance: averageDistance
+    };
+  };
+  this.requestScreenCaptureOrRestart = function (doNotRestart) {
+    if (_config.has_screen_capture_permission) {
+      return true;
+    }
+    // 请求截图权限
+    var screenPermission = false;
+    var actionSuccess = _config.request_capture_permission;
+    if (_config.request_capture_permission && this.ensureAccessibilityEnabled()) {
+      // 存在循环依赖，待解决
+      screenPermission = __webpack_require__(/*! @/lib/prototype/RequestScreenCapture */ "./src/lib/prototype/RequestScreenCapture.js")();
+    } else {
+      actionSuccess = this.waitFor(function () {
+        screenPermission = requestScreenCapture(false);
+      }, 15000);
+    }
+    if (!actionSuccess || !screenPermission) {
+      if (doNotRestart) {
+        _logUtils.errorInfo('请求截图失败，结束运行');
+        return false;
+      }
+      _logUtils.errorInfo('请求截图失败, 设置6秒后重启');
+      this.disableAccessibilityAndRestart(true);
+      _runningQueueDispatcher.removeRunningTask();
+      sleep(6000);
+      _config.resetBrightness && _config.resetBrightness();
+      _runningQueueDispatcher.executeTargetScript(this.getRunningScriptSource());
+      exit();
+    } else {
+      _logUtils.logInfo('请求截屏权限成功');
+      _config.has_screen_capture_permission = true;
+    }
+    return screenPermission;
+  };
+  this.ensureDeviceSizeValid = function () {
+    // 根据截图重新获取设备分辨率
+    var screen = this.checkCaptureScreenPermission(3);
+    if (screen) {
+      var width = screen.width;
+      var height = screen.height;
+      if (width > height) {
+        errorInfo(['检测到截图的宽度大于高度，可能截图方法出现了问题，请尝试强制重启AutoJS，否则脚本无法正常运行! w:{} h:{}', width, height], true);
+        _runningQueueDispatcher.removeRunningTask();
+        _config.resetBrightness && _config.resetBrightness();
+        // 设置五分钟后再次尝试，一般是因为横屏状态下导致的
+        this.setUpAutoStart(5, true);
+        exit();
+      }
+      if (width !== _config.device_width || height !== _config.device_height) {
+        _config.device_height = height;
+        _config.device_width = width;
+        warnInfo(['设备分辨率设置不正确，宽高已修正为：[{}, {}]', width, height]);
+        var configStorage = storages.create(_storage_name);
+        configStorage.put('device_height', height);
+        configStorage.put('device_width', width);
+      }
+    }
+  };
+  this.delayStartIfInSkipPackage = function (notLingering) {
+    var currentRunningPackage = currentPackage();
+    _logUtils.logInfo('当前包名：' + currentRunningPackage);
+    if (this.inSkipList(currentRunningPackage)) {
+      _logUtils.warnInfo('当前包名在应用白名单中，延迟5分钟执行', true);
+      // 保存当前白名单跳过的次数，如果无视包名则直接传入常量
+      this.saveSkipedPackageInfo(_config.warn_skipped_ignore_package ? 'SKIP_IF_WHITE_PACKAGE' : currentRunningPackage);
+      if (!this.askIfStartWhenSkipedTooMuch()) {
+        this.setUpAutoStart(5);
+        if (notLingering || _config.not_lingering_float_window) {
+          _config.forceStop = true;
+          exit();
+        } else {
+          this.commonDelay(5, '白名单中延迟[', true);
+          // 倒计时结束后重新判断 是否在白名单中
+          this.delayStartIfInSkipPackage();
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      // 用于清空统计
+      this.saveSkipedPackageInfo('');
+    }
+    return this.delayStartIfInPayCode();
+  };
+
+  /**
+   * 展示支付码时延迟执行
+   */
+  this.delayStartIfInPayCode = function () {
+    if (!this._widgetUtils) {
+      this._widgetUtils = __webpack_require__(/*! @/lib/prototype/WidgetUtils */ "./src/lib/prototype/WidgetUtils.js");
+    }
+    var regexContent = _config.delay_start_pay_code_content || '向商家付(钱|款)';
+    var paycodeContent = this._widgetUtils.widgetGetOne(regexContent, 1000, true, true);
+    // 避免在日志界面中打印了正则表达式被当成了识别文本
+    if (paycodeContent && paycodeContent.content.indexOf(regexContent) < 0) {
+      _logUtils.warnInfo(['当前在支付码界面，延迟5分钟后执行: {}', paycodeContent.content], true);
+      this.setUpAutoStart(5);
+      if (_config.not_lingering_float_window) {
+        _config.forceStop = true;
+        exit();
+      } else {
+        this.commonDelay(5, '支付码中延迟[', true);
+        // 倒计时结束后重新判断 是否在白名单中
+        this.delayStartIfInSkipPackage();
+      }
+      return true;
+    } else {
+      return false;
+    }
+  };
+  this.myCurrentPackage = function () {
+    return currentPackage();
+  };
+  this.inLimitTimeRange = function () {
+    return false;
+  };
+
+  /**
+   * 减少控制台日志数量，避免内存泄露，仅免费版有用
+   */
+  this.reduceConsoleLogs = function () {
+    if (!_config.is_pro) {
+      var consoleImpl = org.autojs.autojs.autojs.AutoJs.getInstance().getGlobalConsole();
+      var logList = consoleImpl.getAllLogs();
+      _logUtils.debugInfo(['当前日志列表长度： {}', logList.size()]);
+      var maximumSize = _config.console_log_maximum_size || 1500;
+      if (logList.size() > maximumSize) {
+        try {
+          var size = logList.size();
+          var tempList = new java.util.ArrayList(logList).subList(size - maximumSize, size);
+          consoleImpl.clear();
+          logList.addAll(tempList);
+        } catch (e) {
+          // 可能存在多线程异常，没法持有锁没办法处理，直接吃掉异常。
+        }
+      }
+    }
+  };
+  this.delayIfBatteryLow = function () {
+    var battery = device.getBattery();
+    if (!device.isCharging() && battery < _config.battery_keep_threshold) {
+      _logUtils.debugInfo(['当前电量低，延迟一小时后启动，电量值：{} 启动阈值>={}', battery, _config.battery_keep_threshold]);
+      this.setUpAutoStart(60);
+      _config.forceStop = true;
+      exit();
+    }
+  };
+
+  /**
+   * 将灰度化或者二值化之后的单通道的图片转换为四通道 便于多点找色或者找图，避免报错
+   * 
+   * @param {ImageWrapper} singleChannelImage
+   * @returns ImageWrapper
+   */
+  this.convertImageFromSingleChannel = function (singleChannelImage) {
+    // return images.cvtColor(singleChannelImage, 'GRAY2BGRA')
+    var img = com.stardust.autojs.core.image.ImageWrapper.ofBitmap(singleChannelImage.getBitmap());
+    if (typeof resourceMonitor === 'undefined') {
+      // 避免循环引用对象
+      __webpack_require__(/*! @/lib/ResourceMonitor.js */ "./src/lib/ResourceMonitor.js")(runtime, _global_this_).addImageToList(img);
+    } else {
+      resourceMonitor.addImageToList(img);
+    }
+    return img;
+  };
+  this.getRunningScriptSource = function (forceMain) {
+    return _config._auto_start_with_main_js || forceMain ? FileUtils.getRealMainScriptPath() : engines.myEngine().getSource() + '';
+  };
+  this.markExtendSuccess = function () {
+    this.updateRuntimeStorage(EXTEND_FAILED_COUNT, {
+      count: 0
+    });
+  };
+  this.increaseExtendFailedCount = function () {
+    var failedCount = this.getTodaysRuntimeStorage(EXTEND_FAILED_COUNT).count;
+    failedCount += 1;
+    this.updateRuntimeStorage(EXTEND_FAILED_COUNT, {
+      count: failedCount
+    });
+    _logUtils.debugInfo(['接口扩展失败，当前失败次数：{}', failedCount]);
+    return failedCount;
+  };
+  this.createInterfaceOrJavaAdapter = function (clazzOrInterface, extend) {
+    try {
+      // 适配旧版免费版 因为JavaAdapter在原版中有bug
+      return new clazzOrInterface(extend);
+    } catch (e) {
+      _logUtils.warnInfo(['通过接口或类直接扩展[{}]失败，尝试JavaAdapter： {}', clazzOrInterface + '', e]);
+      var failedCount = this.increaseExtendFailedCount();
+      if (failedCount >= 3) {
+        this.forceKillAutoJS('java类加载失败多次');
+      } else {
+        this.setUpAutoStart(0.5);
+      }
+      try {
+        return new JavaAdapter(clazzOrInterface, extend);
+      } catch (e2) {
+        _logUtils.errorInfo(['通过JavaAdapter扩展[{}]依旧失败 直接重启AutoJS：{}', clazzOrInterface + '', e2], true);
+        console.error('加载失败，强制关闭AutoJS', e2);
+        this.forceKillAutoJS('java类加载失败');
+      }
+    }
+  };
+  this.forceKillAutoJS = function (message) {
+    // 加入任务队列 自启动后重新触发脚本
+    _runningQueueDispatcher.addRunningTask();
+    console.error(message);
+    var limit = 3;
+    while (limit > 0) {
+      _logUtils.errorInfo(message + '将在' + limit-- + '秒后关闭AutoJS 请授予自启动权限', true);
+      sleep(1000);
+    }
+    _logUtils.flushAllLogs();
+    java.lang.System.exit(0);
+  };
+}
+CommonFunctions.prototype.initStorageFactory = function () {};
+module.exports = CommonFunctions;
+
+/***/ }),
+
+/***/ "./src/lib/BaseWidgetUtils.js":
+/*!************************************!*\
+  !*** ./src/lib/BaseWidgetUtils.js ***!
+  \************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-11-05 09:12:00
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:23:38
+ * @Description: 
+ */
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config;
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  debugInfo = _require2.debugInfo,
+  debugForDev = _require2.debugForDev,
+  logInfo = _require2.logInfo,
+  infoLog = _require2.infoLog,
+  warnInfo = _require2.warnInfo,
+  errorInfo = _require2.errorInfo;
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var workpath = FileUtils.getCurrentWorkPath();
+runtime.loadDex(workpath + '/dex/autojs-common.dex');
+var algorithm_change_support = false;
+try {
+  importClass(com.tony.autojs.search.AlgorithmChanger);
+  algorithm_change_support = true;
+} catch (e) {
+  console.error('载入dex异常 当前不支持替换算法');
+}
+var BaseWidgetUtils = function BaseWidgetUtils() {
+  var _this = this;
+  /**
+   * 切换控件获取的模式，正常模式基本能获取到当前最新的数据 快速模式会直接获取已缓存的控件信息，但是控件内容并不一定是最新的，目前来说没啥用
+   * @param {number} newMode 0或1 正常模式或快速模式
+   */
+  this.changeMode = function (newMode) {
+    try {
+      var clz = runtime.accessibilityBridge.getClass();
+      clz = clz.getSuperclass();
+      var field = clz.getDeclaredField('mMode');
+      field.setAccessible(true);
+      var mode = parseInt(field.get(runtime.accessibilityBridge));
+      debugInfo(['current mode: {}', mode === 0 ? 'NORMAL' : 'FAST']);
+      runtime.accessibilityBridge.setMode(newMode);
+      mode = parseInt(field.get(runtime.accessibilityBridge));
+      debugInfo(['mode after set: {}', mode === 0 ? 'NORMAL' : 'FAST']);
+    } catch (e) {
+      console.error('执行异常' + e);
+    }
+  };
+  this.enableFastMode = function () {
+    this.changeMode(1);
+  };
+  this.enableNormalMode = function () {
+    this.changeMode(0);
+  };
+
+  /**
+   * 替换控件搜索算法DFS,BFS,VDFS,VBFS,PDFS,PBFS,PVDFS,PVBFS
+   * DFS,BFS为默认提供的深度优先和广度优先搜索算法
+   * VDFS,VBFS为我修改的只搜索可见控件（控件包括父级不可见则直接跳过）深度优先和广度优先搜索算法 缺点是无法搜索不可见控件，适合一个界面中有巨量控件的时候用于加快搜索速度 实际数据抖音极速版从25s缩短到3s
+   * PDFS,PBFS,PVDFS,PVBFS 是通过多线程搜索控件 大大加快搜索速度
+   * 
+   * @param {string} algorithm 搜索算法DFS,BFS,VDFS,VBFS,PDFS,PBFS,PVDFS,PVBFS
+   * @param {UiSelector} mselector
+   * @returns 
+   */
+  this.wrapSelector = function (algorithm, appendFilter, mselector) {
+    appendFilter = appendFilter || function (matcher) {
+      return matcher;
+    };
+    mselector = appendFilter(mselector || selector());
+    if (!algorithm) {
+      return mselector;
+    }
+    if (!algorithm_change_support) {
+      warnInfo(['当前版本不支持替换搜索算法']);
+      return mselector;
+    }
+    current = this.getCurrentAlgorithm();
+    if (current == algorithm) {
+      return mselector;
+    }
+    debugInfo(['替换搜索算法为：{} 原始算法：{}', algorithm, current]);
+    return AlgorithmChanger.changeAlgorithm(mselector, algorithm);
+  };
+
+  /**
+   * 获取当前搜索算法
+   * 
+   * @param {UiSelector} mselector 
+   * @returns 
+   */
+  this.getCurrentAlgorithm = function (mselector) {
+    if (!algorithm_change_support) {
+      warnInfo(['当前版本不支持查询搜索算法']);
+      return '';
+    }
+    mselector = mselector || selector();
+    var className = AlgorithmChanger.getCurrentAlgorithm(mselector);
+    return className.substring(className.lastIndexOf('.') + 1);
+  };
+
+  /**
+   * 判断控件A或者控件B是否存在；超时返回0 找到A返回1 否则返回2
+   * 
+   * @param {string|regex} contentA 控件A的内容
+   * @param {string|regex} contentB 控件B的内容
+   * @param {number} timeout 超时时间
+   * @param {boolean} containContent 是否传递实际内容
+   * @param {function} appendFilter 附加查询条件 详见UiSelector
+   * @param {object} options 额外参数
+   * @return 超时返回0 找到A返回1 否则返回2
+   */
+  this.alternativeWidget = function (contentA, contentB, timeout, containContent, appendFilter, options) {
+    options = options || {};
+    timeout = timeout || _config.timeout_existing;
+    var timeoutFlag = true;
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var matchRegexA = new RegExp(contentA);
+    var matchRegexB = new RegExp(contentB);
+    var isDesc = false,
+      findA = false;
+    var res = null,
+      target = null;
+    var descThreadA = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegexA).findOne();
+      res = target.desc();
+      debugInfo('find desc ' + contentA + " " + res);
+      timeoutFlag = false;
+      isDesc = true;
+      findA = true;
+      countDown.countDown();
+    });
+    var textThreadA = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegexA).findOne();
+      res = target.text();
+      debugInfo('find text ' + contentA + "  " + res);
+      timeoutFlag = false;
+      findA = true;
+      countDown.countDown();
+    });
+    var descThreadB = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegexB).findOne();
+      res = target.desc();
+      debugInfo('find desc ' + contentB + " " + res);
+      timeoutFlag = false;
+      isDesc = true;
+      countDown.countDown();
+    });
+    var textThreadB = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegexB).findOne();
+      res = target.text();
+      debugInfo('find text ' + contentB + "  " + res);
+      timeoutFlag = false;
+      countDown.countDown();
+    });
+    var timeoutThread = threads.start(function () {
+      sleep(timeout);
+      countDown.countDown();
+    });
+    countDown["await"]();
+    descThreadA.interrupt();
+    textThreadA.interrupt();
+    descThreadB.interrupt();
+    textThreadB.interrupt();
+    timeoutThread.interrupt();
+    if (timeoutFlag) {
+      debugInfo(['cannot find any matches {} or {}', contentA, contentB]);
+    }
+    // 超时返回0 找到A返回1 否则返回2
+    var returnVal = timeoutFlag ? 0 : findA ? 1 : 2;
+    if (containContent) {
+      return {
+        target: target,
+        bounds: target ? target.bounds() : null,
+        content: res,
+        value: returnVal
+      };
+    } else {
+      return returnVal;
+    }
+  };
+
+  /**
+   * 校验控件是否存在，并打印相应日志
+   * @param {String} contentVal 控件文本
+   * @param {String} position 日志内容 当前所在位置是否成功进入
+   * @param {Number} timeoutSetting 超时时间 单位毫秒 默认为_config.timeout_existing
+   */
+  this.widgetWaiting = function (contentVal, position, timeoutSetting, appendFilter, options) {
+    options = options || {};
+    var waitingSuccess = this.widgetCheck(contentVal, timeoutSetting, false, appendFilter, options);
+    position = position || contentVal;
+    if (waitingSuccess) {
+      debugInfo('等待控件成功：' + position);
+      return true;
+    } else {
+      errorInfo('等待控件[' + position + ']失败, 查找内容：' + contentVal);
+      return false;
+    }
+  };
+  this.widgetChecking = function (contentVal, options) {
+    options = options || {};
+    return this.widgetCheck(contentVal, options.timeoutSetting, options.containType, options.appendFilter, options);
+  };
+
+  /**
+   * 校验控件是否存在
+   * @param {String} contentVal 控件文本
+   * @param {Number} timeoutSetting 超时时间 单位毫秒 不设置则为_config.timeout_existing
+   * @param {Boolean} containType 返回结果附带文本是desc还是text
+   * @param {Object} options 额外参数
+   * 超时返回false
+   */
+  this.widgetCheck = function (contentVal, timeoutSetting, containType, appendFilter, options) {
+    options = options || {};
+    var timeout = timeoutSetting || _config.timeout_existing;
+    var timeoutFlag = true;
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var matchRegex = new RegExp(contentVal);
+    var isDesc = false;
+    var target = null;
+    var descThread = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegex).findOne();
+      var res = target.desc();
+      debugInfo('find desc ' + contentVal + " " + res);
+      timeoutFlag = false;
+      isDesc = true;
+      countDown.countDown();
+    });
+    var textThread = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegex).findOne();
+      var res = target.text();
+      debugInfo('find text ' + contentVal + "  " + res);
+      timeoutFlag = false;
+      countDown.countDown();
+    });
+    var timeoutThread = threads.start(function () {
+      sleep(timeout);
+      countDown.countDown();
+    });
+    countDown["await"]();
+    descThread.interrupt();
+    textThread.interrupt();
+    timeoutThread.interrupt();
+    if (timeoutFlag) {
+      debugInfo('cannot find any matches ' + contentVal + ' timeout:' + timeout);
+    }
+    if (containType) {
+      return {
+        timeout: timeoutFlag,
+        target: target,
+        bounds: target ? target.bounds() : null,
+        isDesc: isDesc
+      };
+    }
+    return !timeoutFlag;
+  };
+
+  /**
+   * id检测
+   * @param {string|RegExp} idRegex 
+   * @param {number} timeoutSetting 
+   */
+  this.idCheck = function (idRegex, timeoutSetting, containType, appendFilter, options) {
+    options = options || {};
+    var timeout = timeoutSetting || _config.timeout_existing;
+    var timeoutFlag = true;
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var target = null;
+    debugInfo(['查找目标id:{} timeout: {}', idRegex, timeout]);
+    var idCheckThread = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).idMatches(idRegex).findOne();
+      debugInfo('find id ' + idRegex);
+      timeoutFlag = false;
+      countDown.countDown();
+    });
+    var timeoutThread = threads.start(function () {
+      sleep(timeout);
+      countDown.countDown();
+    });
+    countDown["await"]();
+    idCheckThread.interrupt();
+    timeoutThread.interrupt();
+    if (timeoutFlag) {
+      warnInfo(['未能找到id:{}对应的控件', idRegex]);
+    }
+    if (containType) {
+      return {
+        timeout: timeoutFlag,
+        target: target,
+        bounds: target ? target.bounds() : null
+      };
+    }
+    return !timeoutFlag;
+  };
+
+  /**
+   * 校验控件是否存在，并打印相应日志
+   * @param {String} idRegex 控件文本
+   * @param {String} position 日志内容 当前所在位置是否成功进入
+   * @param {Number} timeoutSetting 超时时间 默认为_config.timeout_existing
+   */
+  this.idWaiting = function (idRegex, position, timeoutSetting, appendFilter, options) {
+    options = options || {};
+    var waitingSuccess = this.idCheck(idRegex, timeoutSetting, false, appendFilter, options);
+    position = position || idRegex;
+    if (waitingSuccess) {
+      debugInfo('等待控件成功：' + position);
+      return true;
+    } else {
+      errorInfo('等待控件[' + position + ']失败， id：' + idRegex);
+      return false;
+    }
+  };
+
+  /**
+   * 根据id获取控件信息
+   * @param {String|RegExp} idRegex id
+   * @param {number} timeout 超时时间
+   * @return 返回找到的控件，否则null
+   */
+  this.widgetGetById = function (idRegex, timeout, appendFilter, options) {
+    options = options || {};
+    timeout = timeout || _config.timeout_findOne;
+    var target = this.idCheck(idRegex, timeout, true, appendFilter, options);
+    if (!target.timeout) {
+      return target.target;
+    } else {
+      return null;
+    }
+  };
+
+  /**
+   * 根据内容获取一个对象
+   * 
+   * @param {string} contentVal 
+   * @param {number} timeout 
+   * @param {boolean} containType 是否带回类型
+   * @param {boolean} suspendWarning 是否隐藏warning信息
+   * @param {function} appendFilter 附加查询条件 详见UiSelector
+   */
+  this.widgetGetOne = function (contentVal, timeout, containType, suspendWarning, appendFilter, options) {
+    var target = null;
+    var isDesc = false;
+    var waitTime = timeout || _config.timeout_existing;
+    var timeoutFlag = true;
+    debugInfo(['try to find one: {} timeout: {}ms', contentVal.toString(), waitTime]);
+    var checkResult = this.widgetCheck(contentVal, waitTime, true, appendFilter, options);
+    if (!checkResult.timeout) {
+      timeoutFlag = false;
+      target = checkResult.target;
+      isDesc = checkResult.isDesc;
+    }
+    // 当需要带回类型时返回对象 传递target以及是否是desc
+    if (target && containType) {
+      var result = {
+        target: target,
+        bounds: target.bounds(),
+        isDesc: isDesc,
+        content: isDesc ? target.desc() : target.text()
+      };
+      return result;
+    }
+    if (timeoutFlag) {
+      if (suspendWarning) {
+        debugInfo('timeout for finding ' + contentVal);
+      } else {
+        warnInfo('timeout for finding ' + contentVal);
+      }
+    }
+    return target;
+  };
+
+  /**
+   * 根据内容获取所有对象的列表
+   * 
+   * @param {string} contentVal 
+   * @param {number} timeout 
+   * @param {boolean} containType 是否传递类型
+   * @param {function} appendFilter 附加查询条件 详见UiSelector
+   */
+  this.widgetGetAll = function (contentVal, timeout, containType, appendFilter, options) {
+    options = options || {};
+    var target = null;
+    var isDesc = false;
+    var timeoutFlag = true;
+    var waitTime = timeout || _config.timeout_existing;
+    debugInfo(['try to find all: {} timeout: {}ms', contentVal.toString(), waitTime]);
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var matchRegex = new RegExp(contentVal);
+    var descThread = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegex).untilFind();
+      debugInfo('find all desc ' + contentVal + " length " + target.length);
+      timeoutFlag = false;
+      isDesc = true;
+      countDown.countDown();
+    });
+    var textThread = threads.start(function () {
+      target = _this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegex).untilFind();
+      debugInfo('find all text ' + contentVal + " length " + target.length);
+      timeoutFlag = false;
+      countDown.countDown();
+    });
+    var timeoutThread = threads.start(function () {
+      sleep(waitTime);
+      countDown.countDown();
+    });
+    countDown["await"]();
+    descThread.interrupt();
+    textThread.interrupt();
+    timeoutThread.interrupt();
+    if (timeoutFlag && !target) {
+      return null;
+    } else if (target && containType) {
+      var result = {
+        target: target,
+        isDesc: isDesc
+      };
+      return result;
+    }
+    return target;
+  };
+
+  /**
+   * 查找一个子控件中的目标对象
+   * @param {UiObject} container 父控件
+   * @param {String} contentVal 控件文本
+   * @param {number} timeout 超时时间
+   * @param {Boolean} containType 返回结果附带文本是desc还是text
+   * @param {function} appendFilter 附加查询条件 详见UiSelector
+   * @param {Object} options 额外参数
+   * 超时返回false
+   */
+  this.subWidgetGetOne = function (container, contentVal, timeout, containType, appendFilter, options) {
+    options = options || {};
+    timeout = timeout || _config.timeout_findOne;
+    var countDown = new java.util.concurrent.CountDownLatch(1);
+    var matchRegex = new RegExp(contentVal);
+    var isDesc = false;
+    var isText = false;
+    var target = null;
+    var descThread = threads.start(function () {
+      var descTarget = _this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegex).findOneOf(container);
+      if (descTarget) {
+        debugInfo(['find desc {} {}', contentVal, descTarget.desc()]);
+        isDesc = true;
+        target = descTarget;
+        countDown.countDown();
+      }
+    });
+    var textThread = threads.start(function () {
+      var textTarget = _this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegex).findOneOf(container);
+      if (textTarget) {
+        debugInfo(['find text {} {}', contentVal, textTarget.text()]);
+        isText = true;
+        target = textTarget;
+        countDown.countDown();
+      }
+    });
+    var isTimeout = false;
+    var timeoutThread = threads.start(function () {
+      sleep(timeout);
+      isTimeout = true;
+      countDown.countDown();
+    });
+    countDown["await"]();
+    descThread.interrupt();
+    textThread.interrupt();
+    timeoutThread.interrupt();
+    if (isTimeout || !isDesc && !isText) {
+      debugInfo('cannot find any matches ' + contentVal);
+    }
+    if (target && containType) {
+      return {
+        isDesc: isDesc,
+        target: target,
+        bounds: target.bounds(),
+        content: isDesc ? target.desc() : target.text()
+      };
+    }
+    return target;
+  };
+
+  /**
+   * 查找子控件中所有匹配的目标对象
+   * @param {UiObject} container 父控件
+   * @param {String} contentVal 控件文本
+   * @param {number} timeout 超时时间
+   * @param {Boolean} containType 返回结果附带文本是desc还是text
+   * @param {function} appendFilter 附加查询条件 详见UiSelector
+   * @param {Object} options 额外参数
+   * 超时返回false
+   */
+  this.subWidgetGetAll = function (container, contentVal, timeout, containType, appendFilter, options) {
+    var exists = this.subWidgetGetOne(container, contentVal, timeout, containType, appendFilter, options);
+    if (exists) {
+      var matchRegex = new RegExp(contentVal);
+      var resultList = [];
+      if (exists.isDesc) {
+        resultList = this.wrapSelector(options.algorithm, appendFilter).descMatches(matchRegex).findOf(container);
+      } else {
+        resultList = this.wrapSelector(options.algorithm, appendFilter).textMatches(matchRegex).findOf(container);
+      }
+      if (containType) {
+        return {
+          target: resultList,
+          isDesc: exists.isDesc
+        };
+      } else {
+        return resultList;
+      }
+    } else {
+      return [];
+    }
+  };
+};
+module.exports = BaseWidgetUtils;
+
+/***/ }),
+
+/***/ "./src/lib/BridgeHandler.js":
+/*!**********************************!*\
+  !*** ./src/lib/BridgeHandler.js ***!
+  \**********************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _typeof2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/typeof */ "./node_modules/@babel/runtime/helpers/typeof.js"));
+var _require = __webpack_require__(/*! @/secureConfig.js */ "./src/secureConfig.js"),
+  config = _require.config,
+  default_config = _require.default_config,
+  storage_name = _require.storage_name,
+  securityFields = _require.securityFields;
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var commonFunctions = __webpack_require__(/*! @/lib/prototype/CommonFunction */ "./src/lib/prototype/CommonFunction.js");
+var myEngines = __webpack_require__(/*! @/lib/prototype/MyEngines */ "./src/lib/prototype/MyEngines.js");
+var timers = __webpack_require__(/*! @/lib/prototype/Timers */ "./src/lib/prototype/Timers.js");
+var _require2 = __webpack_require__(/*! @/lib/UpdateChecker */ "./src/lib/UpdateChecker.js"),
+  updateDownloader = _require2.updateDownloader;
+var AesUtil = __webpack_require__(/*! @/lib/AesUtil.js */ "./src/lib/AesUtil.js");
+var ProcessShare = __webpack_require__(/*! @/lib/prototype/ProcessShare */ "./src/lib/prototype/ProcessShare.js");
+var ProjectBridgeHandler = __webpack_require__(/*! @/lib/ProjectBridgeHandler.js */ "./src/lib/ProjectBridgeHandler.js");
+module.exports = function (postMessageToWebView) {
+  var rootPath = FileUtils.getCurrentWorkPath();
+  var storageConfig = storages.create(storage_name);
+  var local_config_path = files.cwd() + '/local_config.cfg';
+  var runtime_store_path = files.cwd() + '/runtime_store.cfg';
+  var aesKey = device.getAndroidId();
+  var bridgeHandler = {
+    toast: function (_toast) {
+      function toast(_x) {
+        return _toast.apply(this, arguments);
+      }
+      toast.toString = function () {
+        return _toast.toString();
+      };
+      return toast;
+    }(function (data) {
+      toast(data.message);
+    }),
+    toastLog: function (_toastLog) {
+      function toastLog(_x2) {
+        return _toastLog.apply(this, arguments);
+      }
+      toastLog.toString = function () {
+        return _toastLog.toString();
+      };
+      return toastLog;
+    }(function (data) {
+      toastLog(data.message);
+    }),
+    loadConfigs: function loadConfigs(data, callbackId) {
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: config
+      });
+    },
+    saveConfigs: function saveConfigs(data) {
+      var newVal = undefined;
+      var changedConfig = {};
+      var changed = false;
+      Object.keys(data).forEach(function (key) {
+        newVal = data[key];
+        if (typeof config[key] !== 'undefined' && typeof newVal !== 'undefined' && newVal !== config[key]) {
+          config[key] = newVal;
+          changed = true;
+          if (securityFields.indexOf(key) > -1) {
+            try {
+              if ((0, _typeof2["default"])(newVal) === 'object') {
+                newVal = JSON.stringify(newVal);
+              }
+              newVal = AesUtil.encrypt(newVal, aesKey);
+              console.log('加密key', key, '结果', newVal);
+            } catch (e) {
+              console.error('加密失败' + e);
+            }
+          }
+          changedConfig[key] = newVal;
+          storageConfig.put(key, newVal);
+        }
+      });
+      changed && sendConfigChangedBroadcast(changedConfig);
+    },
+    saveExtendConfigs: function saveExtendConfigs(data) {
+      // 针对旧版本AutoJS兼容
+      var configs = data.configs,
+        prepend = data.prepend;
+      Object.keys(configs).forEach(function (key) {
+        config.overwrite(prepend + '.' + key, configs[key]);
+      });
+    },
+    // 加载已安装的应用
+    loadInstalledPackages: function loadInstalledPackages(data, callbackId) {
+      var pm = context.getPackageManager();
+      // Return a List of all packages that are installed on the device.
+      var packages = pm.getInstalledPackages(0);
+      var installedPackage = [];
+      for (var i = 0; i < packages.size(); i++) {
+        var packageInfo = packages.get(i);
+        // 判断系统/非系统应用
+        if ((packageInfo.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0) {
+          // 非系统应用
+          var appInfo = pm.getApplicationInfo(packageInfo.packageName, android.content.pm.PackageManager.GET_META_DATA);
+          var appName = appInfo.loadLabel(pm) + "";
+          installedPackage.push({
+            packageName: packageInfo.packageName,
+            appName: appName
+          });
+        } else {
+          // 系统应用
+          // console.verbose("system packageInfo: " + packageInfo.packageName)
+        }
+      }
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: installedPackage
+      });
+    },
+    // 重置配置为默认
+    resetConfigs: function resetConfigs(data, callbackId) {
+      ui.run(function () {
+        confirm('确定要将所有配置重置为默认值吗？').then(function (ok) {
+          if (ok) {
+            Object.keys(default_config).forEach(function (key) {
+              var defaultValue = default_config[key];
+              config[key] = defaultValue;
+              storageConfig.put(key, defaultValue);
+            });
+            toastLog('重置默认值');
+            sendConfigChangedBroadcast(config);
+          }
+        });
+      });
+    },
+    exportConfigs: function exportConfigs() {
+      ui.run(function () {
+        confirm('确定要将配置导出到local_config.cfg吗？此操作会覆盖已有的local_config数据').then(function (ok) {
+          if (ok) {
+            doAsyncOperationWithDialog('导出', function () {
+              Object.keys(default_config).forEach(function (key) {
+                console.verbose(key + ': ' + config[key]);
+              });
+              var configString = AesUtil.encrypt(JSON.stringify(config), aesKey);
+              files.write(local_config_path, configString);
+            }, '配置信息导出成功，刷新目录即可，local_config.cfg内容已加密仅本机可用，除非告知秘钥');
+          }
+        });
+      });
+    },
+    restoreConfigs: function restoreConfigs() {
+      ui.run(function () {
+        confirm('确定要从local_config.cfg中读取配置吗？').then(function (ok) {
+          if (ok) {
+            doAsyncOperationWithDialog('导入', function () {
+              if (files.exists(local_config_path)) {
+                var configStr = AesUtil.decrypt(files.read(local_config_path), aesKey);
+                if (!configStr) {
+                  toastLog('local_config.cfg解密失败, 请尝试输入秘钥');
+                  dialogs.rawInput('请输入秘钥，可通过device.getAndroidId()获取').then(function (key) {
+                    if (key) {
+                      key = key.trim();
+                      configStr = AesUtil.decrypt(files.read(local_config_path), key);
+                      if (configStr) {
+                        refillConfigs(configStr);
+                      } else {
+                        toastLog('秘钥不正确，无法解析');
+                      }
+                    }
+                  });
+                } else {
+                  refillConfigs(configStr);
+                }
+              } else {
+                toastLog('local_config.cfg不存在无法导入');
+              }
+              // ...
+              function refillConfigs(configStr) {
+                var local_config = JSON.parse(configStr);
+                Object.keys(default_config).forEach(function (key) {
+                  var defaultValue = local_config[key];
+                  if (typeof defaultValue === 'undefined') {
+                    defaultValue = default_config[key];
+                  }
+                  config[key] = defaultValue;
+                  storageConfig.put(key, defaultValue);
+                });
+                // 触发页面重载
+                toastLog('重新导入配置成功');
+              }
+            }, '执行完毕');
+          }
+        });
+      });
+    },
+    exportRuntimeStorage: function exportRuntimeStorage() {
+      ui.run(function () {
+        confirm('确定要将运行时数据导出到runtime_store.cfg吗？此操作会覆盖已有的数据').then(function (ok) {
+          if (ok) {
+            doAsyncOperationWithDialog('导出运行时数据', function () {
+              var runtimeStorageStr = AesUtil.encrypt(commonFunctions.exportRuntimeStorage(), aesKey);
+              files.write(runtime_store_path, runtimeStorageStr);
+            }, '导出完成');
+          }
+        });
+      });
+    },
+    restoreRuntimeStorage: function restoreRuntimeStorage() {
+      ui.run(function () {
+        confirm('确定要将从runtime_store.cfg导入运行时数据吗？此操作会覆盖已有的数据').then(function (ok) {
+          if (ok) {
+            doAsyncOperationWithDialog('导入运行时数据', function () {
+              if (files.exists(runtime_store_path)) {
+                var encrypt_content = files.read(runtime_store_path);
+                try {
+                  var decrypt = AesUtil.decrypt(encrypt_content, aesKey);
+                  if (!decrypt) {
+                    toastLog('runtime_store.cfg解密失败, 请尝试输入秘钥');
+                    dialogs.rawInput('请输入秘钥，可通过device.getAndroidId()获取').then(function (key) {
+                      if (key) {
+                        key = key.trim();
+                        decrypt = AesUtil.decrypt(encrypt_content, key);
+                        if (decrypt) {
+                          resetRuntimeStore(decrypt);
+                        } else {
+                          toastLog('秘钥不正确，无法解析');
+                        }
+                      }
+                    });
+                  } else {
+                    resetRuntimeStore(decrypt);
+                  }
+                } catch (e) {
+                  toastLog(e);
+                }
+              } else {
+                toastLog('配置信息不存在，无法导入');
+              }
+              // ...
+              function resetRuntimeStore(runtimeStorageStr) {
+                if (commonFunctions.importRuntimeStorage(runtimeStorageStr)) {
+                  toastLog('导入运行配置成功');
+                  return true;
+                }
+                toastLog('导入运行配置失败，无法读取正确信息');
+                return false;
+              }
+            }, '执行完毕');
+          }
+        });
+      });
+    },
+    downloadUpdate: function downloadUpdate() {
+      threads.start(function () {
+        updateDownloader.downloadUpdate();
+      });
+    },
+    hasAdbPermission: function hasAdbPermission(data, callbackId) {
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: {
+          hasPermission: commonFunctions.hasAdbPermission()
+        }
+      });
+    },
+    getLocalVersion: function getLocalVersion(data, callbackId) {
+      var mainPath = FileUtils.getCurrentWorkPath();
+      var versionFile = files.join(mainPath, 'version.json');
+      var projectFile = files.join(mainPath, 'project.json');
+      var versionName = '';
+      if (files.exists(versionFile)) {
+        versionName = JSON.parse(files.read(versionFile)).version;
+      } else if (files.exists(projectFile)) {
+        versionName = JSON.parse(files.read(projectFile)).versionName;
+      }
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: {
+          versionName: versionName
+        }
+      });
+    },
+    openUrl: function openUrl(data, callbackId) {
+      app.openUrl(data.url);
+    },
+    showLogs: function showLogs() {
+      ui.run(function () {
+        myEngines.execScriptFile(FileUtils.getCurrentWorkPath() + '/查看日志.js', {
+          path: FileUtils.getCurrentWorkPath()
+        });
+      });
+    },
+    openGrayDetector: function openGrayDetector() {
+      ui.run(function () {
+        engines.execScriptFile(FileUtils.getCurrentWorkPath() + '/独立工具/灰度取色.js', {
+          path: FileUtils.getCurrentWorkPath() + '/独立工具/'
+        });
+      });
+    },
+    getEnabledServices: function getEnabledServices(data, callbackId) {
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: {
+          enabledServices: commonFunctions.getEnabledAccessibilityServices()
+        }
+      });
+    },
+    copyText: function copyText(data) {
+      setClip(data.text);
+      toast('内容已经复制到剪切板');
+    },
+    doAuthADB: function doAuthADB() {
+      if (!commonFunctions.hasAdbPermission()) {
+        toastLog('无ADB授权 无法执行');
+        return;
+      }
+      ui.run(function () {
+        engines.execScriptFile(FileUtils.getCurrentWorkPath() + '/unit/授权无障碍权限.js', {
+          path: FileUtils.getCurrentWorkPath() + '/unit/'
+        });
+      });
+    },
+    openConsole: function openConsole() {
+      app.startActivity('console');
+    },
+    // 测试回调
+    callback: function callback(data, callbackId) {
+      log('callback param:' + JSON.stringify(data));
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: {
+          message: 'hello,' + callbackId
+        }
+      });
+    },
+    executeTargetScript: function executeTargetScript(path) {
+      executeScript(path);
+    },
+    queryTargetTimedTaskInfo: function queryTargetTimedTaskInfo(data, callbackId) {
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: _queryTargetTimedTaskInfo(rootPath + data.path)
+      });
+    },
+    listLogFiles: function listLogFiles(data, callbackId) {
+      var logFileMatcher = new RegExp(data.logFileMatcher || /\.(log|txt)(\.\d+)?$/);
+      var fileResult = FileUtils.listDirs(data.filePath || rootPath + '/logs', function (file) {
+        return file.isDirectory() || logFileMatcher.test(file.getName());
+      });
+      console.verbose('加载文件列表：' + JSON.stringify(fileResult));
+      postMessageToWebView({
+        callbackId: callbackId,
+        data: {
+          fileResult: fileResult,
+          currentPath: data.filePath
+        }
+      });
+    },
+    loadFileContent: function loadFileContent(data, callbackId) {
+      if (data.filePath && files.exists(data.filePath)) {
+        console.verbose('加载文件内容：' + data.filePath);
+        var fileContent = files.read(data.filePath);
+        postMessageToWebView({
+          callbackId: callbackId,
+          data: {
+            fileContent: fileContent
+          }
+        });
+      }
+    }
+  };
+  return ProjectBridgeHandler(bridgeHandler);
+  function executeScript(subPath) {
+    // 不在ui线程启动的话会丢失线程上下文，导致执行异常
+    ui.run(function () {
+      var source = rootPath + subPath;
+      engines.execScriptFile(source, {
+        path: source.substring(0, source.lastIndexOf('/'))
+      });
+    });
+  }
+  function _queryTargetTimedTaskInfo(targetScriptPath) {
+    console.log('查找目标：' + targetScriptPath);
+    var resultList = timers.queryTimedTasks({
+      path: targetScriptPath
+    });
+    console.log('result: ' + JSON.stringify(resultList));
+    if (resultList && resultList.length > 0) {
+      return resultList.map(function (task) {
+        var desc = checkAll(task.getTimeFlag());
+        var time = format(Math.floor(task.getMillis() / 3600000)) + ':' + format(task.getMillis() % 3600000 / 60000);
+        if (0x0 == task.getTimeFlag()) {
+          time = new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date(task.getMillis()));
+        }
+        return desc + ' ' + time;
+      }).join(';');
+    }
+    return '';
+  }
+  function format(val) {
+    if (val.length < 2) {
+      return '0' + val;
+    }
+    return val;
+  }
+  function checkAll(timeFlag) {
+    var flagMap = {
+      '_0': {
+        code: 'FLAG_DISPOSABLE',
+        desc: '执行一次'
+      },
+      '1': {
+        code: 'FLAG_SUNDAY',
+        desc: '每周日'
+      },
+      '2': {
+        code: 'FLAG_MONDAY',
+        desc: '每周日一'
+      },
+      '4': {
+        code: 'FLAG_TUESDAY',
+        desc: '每周二'
+      },
+      '8': {
+        code: 'FLAG_WEDNESDAY',
+        desc: '每周三'
+      },
+      '16': {
+        code: 'FLAG_THURSDAY',
+        desc: '每周四'
+      },
+      '32': {
+        code: 'FLAG_FRIDAY',
+        desc: '每周五'
+      },
+      '64': {
+        code: 'FLAG_SATURDAY',
+        desc: '每周六'
+      },
+      '_127': {
+        code: 'FLAG_EVERYDAY',
+        desc: '每天'
+      }
+    };
+    var result = [];
+    if (0x0 === timeFlag || 0x7F === timeFlag) {
+      timeFlag = '_' + timeFlag;
+      result = [flagMap[timeFlag]];
+    } else {
+      result.push(flagMap[0x01 & timeFlag]);
+      result.push(flagMap[0x02 & timeFlag]);
+      result.push(flagMap[0x04 & timeFlag]);
+      result.push(flagMap[0x08 & timeFlag]);
+      result.push(flagMap[0x10 & timeFlag]);
+      result.push(flagMap[0x20 & timeFlag]);
+      result.push(flagMap[0x40 & timeFlag]);
+    }
+    result = result.filter(function (v) {
+      return typeof v !== 'undefined';
+    }).map(function (v) {
+      return v.desc;
+    }).join(',');
+    if (/(每(\S+,)){2,}/.test(result)) {
+      result = '每' + result.replace(/每/g, '');
+    }
+    return result;
+  }
+
+  // 内部方法
+  function sendConfigChangedBroadcast(changedConfig) {
+    console.verbose(engines.myEngine().id + ' 发送广播 通知配置变更');
+    ProcessShare
+    // 设置缓冲区大小为2MB
+    .setBufferSize(2048 * 1024).postInfo(JSON.stringify(changedConfig), '.configShare');
+  }
+  function doAsyncOperationWithDialog(desc, operation, operateSuccessContent) {
+    var executingDialog = dialogs.build({
+      title: desc + '执行中',
+      content: '请稍等',
+      cancelable: false
+    });
+    var executing = true;
+    threads.start(function () {
+      var count = 1;
+      while (executing) {
+        executingDialog.setTitle(desc + '执行中' + new Array(count++ % 4 + 1).join('.'));
+        sleep(1000);
+      }
+    });
+    threads.start(function () {
+      executingDialog.show();
+      try {
+        operation();
+        executingDialog.setContent(operateSuccessContent);
+        executing = false;
+        sleep(1000);
+        executingDialog.dismiss();
+      } catch (e) {
+        toastLog(e);
+        executingDialog.setContent(desc + '异常:' + e);
+        executing = false;
+        sleep(1000);
+        executingDialog.dismiss();
+      }
+    });
+  }
+};
+
+/***/ }),
+
+/***/ "./src/lib/DateUtil.js":
+/*!*****************************!*\
+  !*** ./src/lib/DateUtil.js ***!
+  \*****************************/
+/***/ ((module) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-12-10 19:41:12
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2020-04-25 20:36:33
+ * @Description: 日期格式化工具
+ */
+module.exports = function (date, fmt) {
+  if (typeof fmt === 'undefined') {
+    fmt = "yyyy-MM-dd HH:mm:ss";
+  }
+  var o = {
+    'M+': date.getMonth() + 1,
+    // 月份
+    'd+': date.getDate(),
+    // 日
+    'h+': date.getHours() % 12 === 0 ? 12 : date.getHours() % 12,
+    // 小时
+    'H+': date.getHours(),
+    // 小时
+    'm+': date.getMinutes(),
+    // 分
+    's+': date.getSeconds(),
+    // 秒
+    'q+': Math.floor((date.getMonth() + 3) / 3),
+    // 季度
+    'S': date.getMilliseconds() // 毫秒
+  };
+  var week = {
+    '0': "\u65E5",
+    '1': "\u4E00",
+    '2': "\u4E8C",
+    '3': "\u4E09",
+    '4': "\u56DB",
+    '5': "\u4E94",
+    '6': "\u516D"
+  };
+  var execResult;
+  if (/(y+)/.test(fmt)) {
+    execResult = /(y+)/.exec(fmt);
+    fmt = fmt.replace(execResult[1], (date.getFullYear() + '').substring(4 - execResult[1].length));
+  }
+  if (/(E+)/.test(fmt)) {
+    execResult = /(E+)/.exec(fmt);
+    fmt = fmt.replace(execResult[1], (execResult[1].length > 1 ? execResult[1].length > 2 ? "\u661F\u671F" : "\u5468" : '') + week[date.getDay() + '']);
+  }
+  for (var k in o) {
+    if (new RegExp('(' + k + ')').test(fmt)) {
+      execResult = new RegExp('(' + k + ')').exec(fmt);
+      fmt = fmt.replace(execResult[1], execResult[1].length === 1 ? o[k] : ('00' + o[k]).substring(('' + o[k]).length));
+    }
+  }
+  return fmt;
+};
+
+/***/ }),
+
+/***/ "./src/lib/PrepareWebView.js":
+/*!***********************************!*\
+  !*** ./src/lib/PrepareWebView.js ***!
+  \***********************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var resolver = __webpack_require__(/*! @/lib/AutoJSRemoveDexResolver.js */ "./src/lib/AutoJSRemoveDexResolver.js");
+var printExceptionStack = __webpack_require__(/*! @/lib/PrintExceptionStack */ "./src/lib/PrintExceptionStack.js");
+/**
+ * 初始化webview
+ * @param {*} webview 
+ * @param {*} options 
+ */
+module.exports = function (webview, options) {
+  options = options || {};
+  var enable_log = options.enable_log;
+  var bridgeHandler = null;
+  var mainScriptPath = options.mainScriptPath;
+  if (!mainScriptPath) {
+    console.error('mainScriptPath为空，无法加载');
+    return;
+  }
+  if (!options.indexFilePath) {
+    console.error('indexFilePath为空，无法加载');
+    return;
+  }
+  resolver();
+  runtime.loadDex(mainScriptPath + '/dex/webview-bridge.dex');
+  runtime.loadDex(mainScriptPath + '/dex/autojs-common.dex');
+  importClass(android.webkit.ValueCallback);
+  importClass(android.webkit.WebChromeClient);
+  importClass(android.webkit.WebViewClient);
+  importClass(com.tony.BridgeHandler);
+  importClass(com.tony.WebViewBridge);
+  importClass(com.tony.autojs.common.OkHttpDownloader);
+  importClass(java.util.concurrent.LinkedBlockingQueue);
+  importClass(java.util.concurrent.ThreadPoolExecutor);
+  importClass(java.util.concurrent.TimeUnit);
+  var threadPool = new ThreadPoolExecutor(4, 4, 60, TimeUnit.SECONDS, new LinkedBlockingQueue(128));
+  // webview.clearCache(true)
+  webview.getSettings().setJavaScriptEnabled(true);
+  webview.getSettings().setAllowFileAccess(true);
+  webview.getSettings().setAllowContentAccess(true);
+  // 禁用缩放
+  webview.getSettings().setTextZoom(100);
+  webview.getSettings().setBuiltInZoomControls(false);
+  webview.getSettings().setSupportZoom(false);
+  webview.getSettings().setDisplayZoomControls(false);
+  // 防止出现黑色背景
+  webview.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+  // 创建自定义的WebViewBridge，实现js交互
+  var webViewBridge = new WebViewBridge(new BridgeHandler({
+    exec: function exec(params) {
+      if (enable_log) {
+        var printParams = params;
+        _debug('bridge handler exec: ' + printParams.replace(/(:"?\w{40})[^"]+/g, "$1"));
+      }
+      try {
+        if (params) {
+          if (!bridgeHandler) {
+            bridgeHandler = options.bridgeHandler() || {};
+          }
+          params = JSON.parse(params);
+          var _params = params,
+            bridgeName = _params.bridgeName,
+            callbackId = _params.callbackId,
+            data = _params.data;
+          var handlerFunc = bridgeHandler[bridgeName];
+          if (handlerFunc) {
+            try {
+              handlerFunc(data, callbackId);
+            } catch (e) {
+              printExceptionStack(e);
+            }
+          } else {
+            toastLog('no match bridge for name: ' + bridgeName);
+          }
+        }
+      } catch (e) {
+        printExceptionStack(e);
+      }
+    }
+  }));
+  // 注册bridge
+  webview.addJavascriptInterface(webViewBridge, 'nativeWebviewBridge');
+  // 启用调试模式
+  if (options.enableDebug) {
+    android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+  }
+  // 挂载index.html
+  webview.loadUrl(options.indexFilePath);
+
+  // 日志打印到控制台
+  webview.setWebChromeClient(new JavaAdapter(WebChromeClient, {
+    onConsoleMessage: function onConsoleMessage(message) {
+      message.message && _log('h5:' + message.message());
+    }
+  }));
+  var pageFinished = false;
+  webview.setWebViewClient(new JavaAdapter(WebViewClient, {
+    onPageStarted: function onPageStarted(view, url) {
+      view.post(function () {
+        // 注入webview_bridge
+        webview.evaluateJavascript(files.read(mainScriptPath + "/lib/webview_bridge.js"), new ValueCallback({
+          onReceiveValue: function onReceiveValue(value) {}
+        }));
+      });
+    },
+    onPageFinished: function onPageFinished(view, url) {
+      if (webview.getProgress() == 100 && !pageFinished) {
+        _log('pageFinished?', pageFinished);
+        pageFinished = true;
+        // 延迟注册耗时操作
+        setTimeout(function () {
+          _log('页面加载完毕执行 onPageFinished', url, 'view', view);
+          options.onPageFinished && options.onPageFinished();
+          webview.evaluateJavascript('window.enable_log=' + enable_log + ';', new ValueCallback({
+            onReceiveValue: function onReceiveValue(value) {}
+          }));
+        }, 500);
+      }
+    },
+    // 拦截内部跳转的链接 使用系统浏览器打开
+    shouldOverrideUrlLoading: function shouldOverrideUrlLoading(view, request) {
+      var url = request.getUrl() + '';
+      _log('override url:', url, 'redirect:', request.isRedirect(), 'isForMainFrame:', request.isForMainFrame(), 'hasGesture:', request.hasGesture(), 'getMethod:' + request.getMethod());
+      app.openUrl(url);
+      return true;
+    },
+    // 挂载完成后变更资源路径，自动替换scripts等内容
+    shouldInterceptRequest: function shouldInterceptRequest(view, request) {
+      var url = request.getUrl() + '';
+      _debug('拦截请求：' + url);
+      if (url.startsWith('http')) {
+        return checkIfCacheExists(mainScriptPath, url, threadPool);
+      } else if (url.startsWith('file://')) {
+        var relativePath = decodeURI(url.replace('file://', ''));
+        var absolutePath = '';
+        if (relativePath.indexOf(mainScriptPath) > -1) {
+          absolutePath = relativePath;
+        } else {
+          absolutePath = mainScriptPath + (options.resourcePrefix || '') + relativePath;
+        }
+        _debug(absolutePath);
+        if (!files.exists(absolutePath)) {
+          _error(absolutePath + ' 不存在，无法执行替换 mainPath:' + mainScriptPath);
+          return null;
+        }
+        _debug('准备执行替换：' + absolutePath);
+        try {
+          var result = getMimeTypeByUrl(url);
+          var mimeType = result.mimeType;
+          if (mimeType !== '') {
+            var inputStream = new java.io.FileInputStream(absolutePath);
+            return new android.webkit.WebResourceResponse(mimeType, 'UTF-8', inputStream);
+          } else {
+            _warn('无法确定mimeType: ' + absolutePath, 'extend name', result.extendName);
+          }
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+  }));
+  return function (callbackParams, callback) {
+    // 回调必须在ui线程执行
+    ui.run(function () {
+      try {
+        webview.evaluateJavascript('$app.receiveMessage(' + JSON.stringify(callbackParams) + ');', new ValueCallback({
+          onReceiveValue: function onReceiveValue(value) {
+            callback && callback(value);
+          }
+        }));
+      } catch (e) {
+        _error('error:' + e);
+        printExceptionStack(e);
+      }
+    });
+  };
+  function checkIfCacheExists(mainScriptPath, url, threadPool) {
+    _debug('检查url 是否存在本地缓存', url);
+    var regex = /^http(s)?:\/\/(\w+\.){1,}\w+\/(.*)$/;
+    var result = regex.exec(url);
+    if (result && result.length >= 4) {
+      var filePath = mainScriptPath + '/vue_configs/cache/' + result[3];
+      _debug('缓存文件名称：', filePath);
+      if (files.exists(filePath)) {
+        _warn('缓存文件 已存在:', url);
+        var _result = getMimeTypeByUrl(url);
+        var mimeType = _result.mimeType;
+        if (mimeType !== '') {
+          var inputStream = new java.io.FileInputStream(filePath);
+          return new android.webkit.WebResourceResponse(mimeType, 'UTF-8', inputStream);
+        } else {
+          _warn('缓存文件 无法确定mimeType: ' + filePath, 'extend name', _result.extendName);
+        }
+      } else {
+        _debug('本地缓存不存在', filePath);
+      }
+      threadPool.execute(function () {
+        _debug('下载文件：', url, ' path:', filePath, files.ensureDir(filePath));
+        OkHttpDownloader.download(url, filePath);
+      });
+    } else {
+      _warn('解析url中的文件名称失败 url:', url);
+    }
+    return null;
+  }
+  function getMimeTypeByUrl(url) {
+    var extendName = url.substring(url.lastIndexOf('.'));
+    var mimeType = '';
+    switch (extendName) {
+      case '.js':
+        mimeType = 'application/x-javascript';
+        break;
+      case '.css':
+        mimeType = 'text/css';
+        break;
+      case '.html':
+        mimeType = 'text/html';
+        break;
+      case '.json':
+        mimeType = 'application/json';
+        break;
+      case '.ico':
+        mimeType = 'image/x-icon';
+        break;
+      case '.svg':
+        mimeType = 'image/svg+xml';
+        break;
+      case '.jpg':
+      case '.jpeg':
+        mimeType = 'image/jpeg';
+        break;
+      case '.gif':
+        mimeType = 'image/gif';
+        break;
+      case '.png':
+        mimeType = 'image/png';
+        break;
+      default:
+      // ...只增加了常用的 如有需要可上网查找 参考链接 https://tool.oschina.net/commons/_contenttype.dea
+    }
+    return {
+      mimeType: mimeType,
+      extendName: extendName
+    };
+  }
+  function _debug() {
+    enable_log && console.verbose.apply(null, arguments);
+  }
+  function _log() {
+    enable_log && console.log.apply(null, arguments);
+  }
+  function _warn() {
+    enable_log && console.warn.apply(null, arguments);
+  }
+  function _error() {
+    enable_log && console.error.apply(null, arguments);
+  }
+};
+
+/***/ }),
+
+/***/ "./src/lib/PrintExceptionStack.js":
+/*!****************************************!*\
+  !*** ./src/lib/PrintExceptionStack.js ***!
+  \****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _typeof2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/typeof */ "./node_modules/@babel/runtime/helpers/typeof.js"));
+importClass(java.io.StringWriter);
+importClass(java.io.StringReader);
+importClass(java.io.PrintWriter);
+importClass(java.io.BufferedReader);
+importClass(java.lang.StringBuilder);
+module.exports = function printExceptionStack(e) {
+  if (e) {
+    console.error(util.format('fileName: %s line:%s typeof e:%s', e.fileName, e.lineNumber, (0, _typeof2["default"])(e)));
+    var throwable = null;
+    if (e.javaException) {
+      throwable = e.javaException;
+    } else if (e.rhinoException) {
+      throwable = e.rhinoException;
+    }
+    if (throwable) {
+      var scriptTrace = new StringBuilder(e.message == null ? '' : e.message + '\n');
+      var stringWriter = new StringWriter();
+      var writer = new PrintWriter(stringWriter);
+      throwable.printStackTrace(writer);
+      writer.close();
+      var bufferedReader = new BufferedReader(new StringReader(stringWriter.toString()));
+      var line;
+      while ((line = bufferedReader.readLine()) != null) {
+        scriptTrace.append("\n").append(line);
+      }
+      console.error(scriptTrace.toString());
+    } else {
+      var funcs = Object.getOwnPropertyNames(e);
+      for (var idx in funcs) {
+        var func_name = funcs[idx];
+        console.verbose(func_name);
+      }
+    }
+  }
+};
+
+/***/ }),
+
+/***/ "./src/lib/ProjectBridgeHandler.js":
+/*!*****************************************!*\
+  !*** ./src/lib/ProjectBridgeHandler.js ***!
+  \*****************************************/
+/***/ ((module) => {
+
+module.exports = function (BaseHandler) {
+  // 扩展方法 
+
+  return BaseHandler;
+};
+
+/***/ }),
+
+/***/ "./src/lib/ProjectCommonFunctions.js":
+/*!*******************************************!*\
+  !*** ./src/lib/ProjectCommonFunctions.js ***!
+  \*******************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/**
+ * 每个项目里面新增或者修改的方法集合
+ */
+
+var storageFactory = __webpack_require__(/*! @/lib/prototype/StorageFactory */ "./src/lib/prototype/StorageFactory.js");
+var BaseCommonFunction = __webpack_require__(/*! @/lib/BaseCommonFunctions.js */ "./src/lib/BaseCommonFunctions.js");
+
+/**
+ * 项目新增的方法写在此处
+ */
+var ProjectCommonFunction = function ProjectCommonFunction() {
+  BaseCommonFunction.call(this);
+  this.keyList = [];
+};
+ProjectCommonFunction.prototype = Object.create(BaseCommonFunction.prototype);
+ProjectCommonFunction.prototype.constructor = ProjectCommonFunction;
+
+/**
+ * 初始化存储
+ */
+ProjectCommonFunction.prototype.initStorageFactory = function () {
+  // 初始化值
+  // storageFactory.initFactoryByKey($key, $defaultVal)
+};
+module.exports = ProjectCommonFunction;
+
+/***/ }),
+
+/***/ "./src/lib/ProjectWidgetUtils.js":
+/*!***************************************!*\
+  !*** ./src/lib/ProjectWidgetUtils.js ***!
+  \***************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config,
+  _storage_name = _require.storage_name;
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  debugInfo = _require2.debugInfo,
+  debugForDev = _require2.debugForDev,
+  logInfo = _require2.logInfo,
+  infoLog = _require2.infoLog,
+  warnInfo = _require2.warnInfo,
+  errorInfo = _require2.errorInfo;
+var _commonFunctions = __webpack_require__(/*! @/lib/prototype/CommonFunction */ "./src/lib/prototype/CommonFunction.js");
+var _BaseWidgetUtils = __webpack_require__(/*! @/lib/BaseWidgetUtils.js */ "./src/lib/BaseWidgetUtils.js");
+var ProjectWidgetUtils = function ProjectWidgetUtils() {
+  _BaseWidgetUtils.call(this);
+  // 自定义的控件操作写在此处
+};
+ProjectWidgetUtils.prototype = Object.create(_BaseWidgetUtils.prototype);
+ProjectWidgetUtils.prototype.constructor = ProjectWidgetUtils;
+module.exports = ProjectWidgetUtils;
+
+/***/ }),
+
+/***/ "./src/lib/ResourceMonitor.js":
+/*!************************************!*\
+  !*** ./src/lib/ResourceMonitor.js ***!
+  \************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-05-11 18:28:23
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:26:29
+ * @Description: 图片资源监听并自动回收
+ */
+importClass(java.util.concurrent.ScheduledThreadPoolExecutor);
+importClass(java.util.concurrent.TimeUnit);
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  config = _require.config;
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  debugInfo = _require2.debugInfo,
+  debugForDev = _require2.debugForDev,
+  infoLog = _require2.infoLog,
+  errorInfo = _require2.errorInfo;
+var commonFunctions = __webpack_require__(/*! @/lib/prototype/CommonFunction */ "./src/lib/prototype/CommonFunction.js");
+function isNullOrUndefined(val) {
+  return val === null || typeof val === 'undefined';
+}
+module.exports = function (__runtime__, scope) {
+  if (typeof scope.resourceMonitor === 'undefined' || scope.resourceMonitor === null) {
+    var ResourceMonitor = function ResourceMonitor() {
+      this.images = [];
+      // 需要长时间持有的图片，不会自动动态释放
+      this.longHoldImages = [];
+      this.writeLock = threads.lock();
+      this.init();
+    };
+    var doRecycleImages = function doRecycleImages(forRecycleList, desc) {
+      var start = new Date().getTime();
+      var count = 0;
+      forRecycleList.forEach(function (imageInfo) {
+        try {
+          var imgBitmap = imageInfo.img.getBitmap();
+          if (imgBitmap && !imgBitmap.isRecycled()) {
+            imageInfo.img.recycle();
+          } else {
+            debugForDev('图片已回收，不再回收');
+            count++;
+          }
+        } catch (e) {
+          // console.warn('释放图片异常' + e)
+          count++;
+        }
+      });
+      debugInfo(['{}，总数：{}，耗时：{}ms {}', desc, forRecycleList.length, new Date().getTime() - start, count > 0 ? ', 其中有：' + count + '自动释放了' : '']);
+      forRecycleList = null;
+    };
+    var _o_images = scope.images;
+    debugInfo(['Is _origin_images null? {}.', isNullOrUndefined(_o_images)]);
+    var availMem = device.getAvailMem();
+    debugInfo(['当前可用内存：{}b {}MB', availMem, availMem / (1024 * 1024)]);
+    var imgSize = config.device_width * config.device_height * 10 / 8 / 1024 / 1024 / 2;
+    debugInfo(['预估单张图片大小：{}MB', imgSize]);
+    availMem = availMem > imgSize * 100 * 1024 * 1024 ? imgSize * 100 * 1024 * 1024 : availMem;
+    var maximumStore = availMem / (imgSize * 1024 * 1024);
+    var halfStore = Math.ceil(maximumStore / 2);
+    debugInfo(['支持最大图片张数：{} 一半：{}', maximumStore, halfStore]);
+    var scheduledExecutor = new ScheduledThreadPoolExecutor(1);
+    ResourceMonitor.prototype.releaseAll = function (undelegated) {
+      if (this.images !== null) {
+        debugInfo('释放图片，总数：' + (this.images.length + this.longHoldImages.length));
+        this.writeLock.lock();
+        try {
+          this.recycleImages(this.images.splice(0), true);
+          this.recycleImages(this.longHoldImages.splice(0), true);
+          if (undelegated) {
+            debugInfo('解除图像资源代理');
+            this.images = null;
+            scope.images = _o_images;
+            scope.__asGlobal__(_o_images, ['captureScreen']);
+            _o_images = null;
+          }
+        } finally {
+          this.writeLock.unlock();
+        }
+      }
+    };
+    ResourceMonitor.prototype.addLongHoldImage = function (img) {
+      this.writeLock.lock();
+      try {
+        if (this.longHoldImages === null) {
+          // this is only happen when engine stoped, just recycle img
+          debugInfo('检测到脚本已停止，直接回收图片');
+          img.recycle();
+          return;
+        }
+        this.longHoldImages.push({
+          img: img,
+          millis: new Date().getTime()
+        });
+        debugForDev('增加图片到长时间持有的监听列表，需要手动recycle，当前总数：' + this.longHoldImages.length);
+      } finally {
+        this.writeLock.unlock();
+      }
+    };
+    ResourceMonitor.prototype.addImageToList = function (img) {
+      debugForDev('准备获取图片资源锁');
+      this.writeLock.lock();
+      debugForDev('获取图片资源锁成功');
+      try {
+        if (this.images === null) {
+          // this is only happen when engine stoped, just recycle img
+          debugInfo('检测到脚本已停止，直接回收图片');
+          img.recycle();
+          return;
+        }
+        this.images.push({
+          img: img,
+          millis: new Date().getTime()
+        });
+        debugForDev('增加图片到监听列表，当前总数：' + this.images.length);
+        // 达到一定阈值后回收
+        if (this.images.length > halfStore) {
+          if (this.images.length > maximumStore) {
+            // 大于100张直接回收一半 基本不会触发 除非卡死循环了
+            this.recycleImages(this.images.splice(0, halfStore));
+          } else {
+            var current = new Date().getTime();
+            // 回收超过5秒钟的图片
+            var forRecycle = this.images.filter(function (imageInfo) {
+              return current - imageInfo.millis > 5000;
+            });
+            this.recycleImages(forRecycle);
+            this.images.splice(0, forRecycle.length);
+          }
+        }
+      } finally {
+        this.writeLock.unlock();
+      }
+    };
+
+    /**
+     * 
+     * @param {ImageWrapper} img 
+     * @param {number} delay 
+     */
+    ResourceMonitor.prototype.delayRecycle = function (img, delay) {
+      delay = delay || 5;
+      scheduledExecutor.schedule(new java.lang.Runnable({
+        run: function run() {
+          debugForDev(['延迟回收图片 延迟时间：{}s', delay]);
+          img && img.recycle();
+        }
+      }), new java.lang.Long(delay), TimeUnit.SECONDS);
+    };
+    ResourceMonitor.prototype.recycleImages = function (forRecycleList, sync) {
+      if (forRecycleList && forRecycleList.length > 0) {
+        if (sync) {
+          doRecycleImages(forRecycleList, '同步释放所有图片');
+        } else {
+          threads.start(function () {
+            // 不太安全，可能没释放完就挂了 脚本结束时最好执行一下releaseAll
+            doRecycleImages(forRecycleList, '异步释放图片');
+          });
+        }
+      }
+    };
+    ResourceMonitor.prototype.init = function () {
+      var that = this;
+      var M_Images = function M_Images() {
+        _o_images.constructor.call(this);
+      };
+      M_Images.prototype = Object.create(_o_images.prototype);
+      M_Images.prototype.constructor = M_Images;
+      M_Images.prototype.captureScreen = function () {
+        var start = new Date().getTime();
+        debugForDev('准备获取截图');
+        var img = _o_images.captureScreen();
+        debugForDev(['获取截图完成，耗时{}ms', new Date().getTime() - start]);
+        // captureScreen的不需要回收
+        // that.addImageToList(img)
+        return img;
+      };
+
+      /**
+       * @param long_hold {boolean} 是否长期持有，不会被自动recycle，需要在代码中手动释放资源
+       */
+      M_Images.prototype.copy = function (origialImg, long_hold) {
+        var newImg = _o_images.copy(origialImg);
+        if (!long_hold) {
+          that.addImageToList(newImg);
+        } else {
+          that.addLongHoldImage(newImg);
+        }
+        return newImg;
+      };
+      M_Images.prototype.read = function (path) {
+        var newImg = _o_images.read(path);
+        that.addImageToList(newImg);
+        return newImg;
+      };
+      M_Images.prototype.load = function (path) {
+        var newImg = _o_images.load(path);
+        that.addImageToList(newImg);
+        return newImg;
+      };
+      M_Images.prototype.clip = function (img, x, y, w, h) {
+        var newImg = _o_images.clip(img, x, y, w, h);
+        that.addImageToList(newImg);
+        return newImg;
+      };
+      M_Images.prototype.interval = function (img, color, threshold) {
+        var intervalImg = _o_images.interval(img, color, threshold);
+        that.addImageToList(intervalImg);
+        return intervalImg;
+      };
+      M_Images.prototype.grayscale = function (img) {
+        var grayImg = _o_images.grayscale(img);
+        that.addImageToList(grayImg);
+        return grayImg;
+      };
+      M_Images.prototype.threshold = function (img, threshold, maxVal, type) {
+        var nImg = _o_images.threshold(img, threshold, maxVal, type);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.inRange = function (img, lowerBound, upperBound) {
+        var nImg = _o_images.inRange(img, lowerBound, upperBound);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.adaptiveThreshold = function (img, maxValue, adaptiveMethod, thresholdType, blockSize, C) {
+        var nImg = _o_images.adaptiveThreshold(img, maxValue, adaptiveMethod, thresholdType, blockSize, C);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.blur = function (img, size, point, type) {
+        var nImg = _o_images.blur(img, size, point, type);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.medianBlur = function (img, size) {
+        var nImg = _o_images.medianBlur(img, size);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.gaussianBlur = function (img, size, sigmaX, sigmaY, type) {
+        var nImg = _o_images.gaussianBlur(img, size, sigmaX, sigmaY, type);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.cvtColor = function (img, code, dstCn) {
+        var nImg = _o_images.cvtColor(img, code, dstCn);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.resize = function (img, size, interpolation) {
+        var nImg = _o_images.resize(img, size, interpolation);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.scale = function (img, fx, fy, interpolation) {
+        var nImg = _o_images.scale(img, fx, fy, interpolation);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.rotate = function (img, degree, x, y) {
+        var nImg = _o_images.rotate(img, degree, x, y);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.concat = function (img1, img2, direction) {
+        var nImg = _o_images.concat(img1, img2, direction);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.fromBase64 = function (base64) {
+        var nImg = _o_images.fromBase64(base64);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.fromBytes = function (bytes) {
+        var nImg = _o_images.fromBytes(bytes);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.matToImage = function (img) {
+        var nImg = _o_images.matToImage(img);
+        that.addImageToList(nImg);
+        return nImg;
+      };
+      M_Images.prototype.isDelegated = function () {
+        return true;
+      };
+      M_Images.prototype.isValidImg = function (img) {
+        try {
+          img.ensureNotRecycled();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+      var mImages = new M_Images();
+      var newImages = {};
+      var imageFuncs = Object.getOwnPropertyNames(scope.images);
+      var newFuncs = Object.getOwnPropertyNames(M_Images.prototype);
+      for (var idx in imageFuncs) {
+        var func_name = imageFuncs[idx];
+        newImages[func_name] = scope.images[func_name];
+      }
+      for (var _idx in newFuncs) {
+        var _func_name = newFuncs[_idx];
+        if (_func_name !== 'constructor' && _func_name !== 'init') {
+          // console.verbose('override function: ' + func_name)
+          newImages[_func_name] = mImages[_func_name];
+        }
+      }
+      debugInfo('图片资源代理创建完毕，准备替换scope中的images');
+      scope.images = newImages;
+      scope.__asGlobal__(mImages, ['captureScreen']);
+      debugInfo('图片资源代理替换images完毕');
+    };
+    var resourceMonitor = new ResourceMonitor();
+    commonFunctions.registerOnEngineRemoved(function () {
+      infoLog('脚本执行结束, 释放图片资源');
+      resourceMonitor.releaseAll(true);
+    }, 'resourceMonitor');
+    scope.resourceMonitor = resourceMonitor;
+  }
+  return scope.resourceMonitor;
+};
+
+/***/ }),
+
+/***/ "./src/lib/UpdateChecker.js":
+/*!**********************************!*\
+  !*** ./src/lib/UpdateChecker.js ***!
+  \**********************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _defineProperty2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/defineProperty */ "./node_modules/@babel/runtime/helpers/defineProperty.js"));
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  config = _require.config;
+var fileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var storageFactory = __webpack_require__(/*! @/lib/prototype/StorageFactory */ "./src/lib/prototype/StorageFactory.js");
+var UPDATE_STORAGE = "update_info";
+var DAILY_UPDATE_CHECK_STORAGE = "daily_update_check";
+importPackage(Packages["okhttp3"]);
+module.exports = function () {
+  function BaseDownloader() {
+    var _this = this;
+    this.doDownload = function () {
+      var downloadDialog = dialogs.build({
+        title: '更新中...',
+        content: '更新中',
+        cancelable: false,
+        progress: {
+          max: 100,
+          horizontal: true,
+          showMinMax: false
+        }
+      });
+      this.downloadDialog = downloadDialog;
+      this.downloader.setListener(new DownloaderListener({
+        updateGui: function updateGui(string) {
+          log(string);
+          downloadDialog.setContent(string);
+        },
+        updateError: function updateError(string) {
+          console.error(string);
+        },
+        updateProgress: function updateProgress(progressInfo) {
+          downloadDialog.setProgress(progressInfo.getProgress() * 100);
+        }
+      }));
+      dialogs.build({
+        title: '是否下载更新',
+        content: _this.content,
+        cancelable: false,
+        neutral: '备份后更新',
+        negative: '取消',
+        positive: '覆盖更新',
+        negativeColor: 'red',
+        positiveColor: '#f9a01c'
+      }).on('negative', function () {
+        // exit()
+      }).on('neutral', function () {
+        downloadDialog.show();
+        threads.start(function () {
+          _this.downloadingExecutor(true);
+        });
+      }).on('positive', function () {
+        downloadDialog.show();
+        threads.start(function () {
+          _this.downloadingExecutor(false);
+        });
+      }).show();
+    };
+    this.loadReleaseInfo = function () {};
+    this.downloadUpdate = function () {
+      this.init();
+      this.loadReleaseInfo();
+      this.doDownload();
+    };
+  }
+  BaseDownloader.prototype.basePrepareDownloader = function (downloader, targetOutputDir) {
+    downloader.setListener(new DownloaderListener({
+      updateGui: function updateGui(string) {
+        log(string);
+      },
+      updateError: function updateError(string) {
+        console.error(string);
+      },
+      updateProgress: function updateProgress(progressInfo) {}
+    }));
+    log('下载并解压文件到目录：' + targetOutputDir);
+    // 设置尝试获取总大小的次数，默认5次，github的content-length偶尔会给 偶尔不会给，主要原因是服务端用了分块传输的缘故
+    downloader.setTryCount(2);
+    downloader.setOutputDir(targetOutputDir);
+    // 设置不需要解压覆盖的文件
+    // 请勿移除'dex/autojs-tools.dex' 否则引起报错
+    downloader.setUnzipSkipFiles(['.gitignore', 'dex/autojs-tools.dex', 'dex/download.dex']);
+    // 设置不需要备份的文件
+    downloader.setBackupIgnoreFiles([]);
+    prepareDownloaderForPro(downloader);
+    this.downloader = downloader;
+    var _this = this;
+    this.downloadingExecutor = function (backup) {
+      if (backup) {
+        _this.downloader.backup();
+        sleep(1000);
+      }
+      _this.downloader.downloadZip();
+
+      // 覆盖新的dex到lib下
+      var copy_result = files.copy(targetOutputDir + '/resources/for_update/download.dex', targetOutputDir + '/dex/download.dex');
+      toastLog('复制新的dex文件' + (copy_result ? '成功' : '失败'));
+      log('清理过时lib文件');
+      var outdate_file_path = targetOutputDir + '/resources/for_update/OutdateFiles.js';
+      if (files.exists(outdate_file_path)) {
+        _this.downloadDialog.setContent('清理过期文件...');
+        var outdateFiles = eval('require')(outdate_file_path);
+        outdateFiles && outdateFiles.length > 0 && outdateFiles.forEach(function (fileName) {
+          var fullPath = targetOutputDir + '/' + fileName;
+          if (files.exists(fullPath)) {
+            var deleteResult = false;
+            if (files.isDir(fullPath) && !files.isEmptyDir(fullPath)) {
+              deleteResult = files.removeDir(fullPath);
+            } else {
+              deleteResult = files.remove(fullPath);
+            }
+            console.verbose('删除过期文件：' + fullPath + ' ' + (deleteResult ? '成功' : '失败'));
+          }
+        });
+      }
+      // 更新后刷新webview缓存
+      config.overwrite('clear_webview_cache', true);
+      _this.downloadDialog.setContent('更新完成');
+      sleep(2000);
+      _this.downloadDialog.dismiss();
+    };
+  };
+  BaseDownloader.prototype.init = function () {
+    var rootPath = fileUtils.getCurrentWorkPath();
+    this.rootPath = rootPath;
+    var resolver = __webpack_require__(/*! @/lib/AutoJSRemoveDexResolver.js */ "./src/lib/AutoJSRemoveDexResolver.js");
+    resolver();
+    var dexPath = rootPath + '/dex/download.dex';
+    if (!files.exists(dexPath)) {
+      var copy_result = files.copy(rootPath + '/resources/for_update/download.dex', dexPath);
+      logUtils.warnInfo(['download.dex文件不存在，重新复制备份文件，执行结果：{}', copy_result ? '成功' : '失败']);
+    }
+    runtime.loadDex(dexPath);
+    try {
+      importClass(com.tony.listener.DownloaderListener);
+    } catch (e) {
+      var errorInfo = e + '';
+      if (/importClass must be called/.test(errorInfo)) {
+        toastLog('请强制关闭AutoJS并重新启动');
+        exit();
+      }
+    }
+    importClass(com.tony.listener.DownloaderListener);
+    importClass(com.tony.resolver.JSONResolver);
+    importClass(com.tony.downloader.GithubReleaseDownloader);
+    importClass(com.tony.downloader.GiteeReleaseDownloader);
+    importClass(com.tony.downloader.GithubHistoryTagDownloader);
+    resolver();
+    this.basePrepareDownloader(this.prepareDownloader(), this.rootPath);
+  };
+  function UpdateDownloader(github_latest_url, gitee_relase_url, gitee_package_prefix, gitee_package_url) {
+    BaseDownloader.call(this);
+    var _this = this;
+    this.githubReleaseUrl = github_latest_url;
+    this.giteeReleaseUrl = gitee_relase_url;
+    this.giteePackagePrefix = gitee_package_prefix;
+    this.giteePackageUrl = gitee_package_url;
+    this.chose = 0;
+    this.prepareDownloader = function () {
+      var apiUrl = null;
+      var downloader = null;
+      if (this.giteeReleaseUrl) {
+        this.chose = dialogs.singleChoice('请选择更新源', ['Github Release(推荐)', 'Gitee Release(备用)'], 0);
+        if (this.chose === 0) {
+          toastLog('使用Github Release 作为更新源');
+          apiUrl = this.githubReleaseUrl;
+          downloader = new GithubReleaseDownloader();
+        } else {
+          toastLog('使用Gitee Release 作为更新源');
+          apiUrl = this.giteeReleaseUrl;
+          // 设置包前缀，更新包所在的仓库 
+          downloader = new GiteeReleaseDownloader(this.giteePackagePrefix, this.giteePackageUrl);
+        }
+      } else {
+        apiUrl = this.githubReleaseUrl;
+        downloader = new GithubReleaseDownloader();
+      }
+      downloader.setTargetReleasesApiUrl(apiUrl);
+      return downloader;
+    };
+    this.loadReleaseInfo = function () {
+      var loadingDialog = dialogs.build({
+        cancelable: false,
+        negative: '取消',
+        title: '正在从' + (_this.chose == 0 ? 'Github' : 'Gitee') + '获取更新信息',
+        content: '加载中，请稍等...'
+      }).on('negative', function () {
+        // exit()
+      }).show();
+      var summary = this.downloader.getUpdateSummary();
+      if (summary === null) {
+        loadingDialog.setContent('无法获取release版本信息，请多试几次或者切换更新源');
+        sleep(1000);
+        loadingDialog.dismiss();
+        // exit()
+      }
+      summary = JSON.parse(summary);
+      var localVersion = this.downloader.getLocalVersion();
+      this.content = '线上版本：' + summary.tagName + '\n';
+      this.content += '本地版本：' + (localVersion === null ? '无法获取本地版本信息' : localVersion) + '\n';
+      this.content += '更新内容：\n' + summary.body;
+      loadingDialog.dismiss();
+    };
+  }
+  UpdateDownloader.prototype = Object.create(BaseDownloader.prototype);
+  UpdateDownloader.prototype.constructor = UpdateDownloader;
+  function HistoryDownloader(historyTagUrl) {
+    BaseDownloader.call(this);
+    this.apiUrl = historyTagUrl;
+    this.prepareDownloader = function () {
+      return new GithubHistoryTagDownloader(this.apiUrl);
+    };
+    this.loadReleaseInfo = function () {
+      var loadingDialog = dialogs.build({
+        cancelable: false,
+        negative: '取消',
+        title: '正在从Github获取更新信息',
+        content: '加载中，请稍等...'
+      }).on('negative', function () {
+        exit();
+      }).show();
+      var tagInfosString = this.downloader.getTagInfoList();
+      console.log(tagInfosString);
+      var tagInfoList = JSON.parse(tagInfosString);
+      var choseTag = null;
+      if (tagInfoList) {
+        var chose = dialogs.singleChoice('请选择版本', tagInfoList.map(function (tagInfo) {
+          return tagInfo.name;
+        }), 0);
+        choseTag = tagInfoList[chose];
+        console.log('选择了下载版本：' + JSON.stringify(choseTag));
+        loadingDialog.dismiss();
+      } else {
+        loadingDialog.setContent('无法获取历史更新信息');
+        sleep(2000);
+        loadingDialog.dismiss();
+      }
+      var localVersion = this.downloader.getLocalVersion();
+      this.content = '本地版本：' + (localVersion === null ? '无法获取本地版本信息' : localVersion) + '\n' + '目标版本：' + choseTag.name + '\n' + '版本降级之后，如无法正常运行，请手动解压origin.zip之后使用\n\n' + '解压地址：' + this.rootPath;
+      loadingDialog.dismiss();
+      this.downloader.setTargetTagInfo(JSON.stringify(choseTag));
+    };
+  }
+  HistoryDownloader.prototype = Object.create(BaseDownloader.prototype);
+  HistoryDownloader.prototype.constructor = HistoryDownloader;
+  return {
+    updateChecker: new UpdateChecker(config.github_latest_url),
+    updateDownloader: new UpdateDownloader(config.github_latest_url, config.gitee_relase_url, config.gitee_package_prefix, config.gitee_package_url),
+    historyDownloader: new HistoryDownloader(config.history_tag_url)
+  };
+}();
+
+// -----
+function UpdateChecker(latestUrl) {
+  storageFactory.initFactoryByKey(UPDATE_STORAGE, {
+    latestVersion: ''
+  });
+  storageFactory.initFactoryByKey(DAILY_UPDATE_CHECK_STORAGE, {
+    checked: false
+  });
+  this.latestUrl = latestUrl;
+  this.getLocalVersion = function () {
+    var mainPath = fileUtils.getCurrentWorkPath();
+    var versionFile = files.join(mainPath, 'version.json');
+    var projectFile = files.join(mainPath, 'project.json');
+    var versionName = '';
+    if (files.exists(versionFile)) {
+      versionName = JSON.parse(files.read(versionFile)).version;
+    } else if (files.exists(projectFile)) {
+      versionName = JSON.parse(files.read(projectFile)).versionName;
+    }
+    return versionName;
+  };
+  this.requestLatestInfo = function (disablePersonalToken) {
+    if (this.latestUrl === '') {
+      return null;
+    }
+    var request = new Request.Builder().url(this.latestUrl).get();
+    if (config.release_access_token && !disablePersonalToken) {
+      request.addHeader('authorization', 'token ' + config.release_access_token);
+    }
+    request = request.build();
+    var response = null;
+    var result = null;
+    try {
+      var okHttpClient = new OkHttpClient();
+      response = okHttpClient.newCall(request).execute();
+      if (response != null && response.body() != null) {
+        var resultString = response.body().string();
+        logUtils.debugInfo('请求结果：' + resultString);
+        result = JSON.parse(resultString);
+      }
+    } catch (e) {
+      logUtils.errorInfo('请求更新信息接口异常' + e);
+    } finally {
+      if (response !== null) {
+        response.close();
+      }
+    }
+    return result;
+  };
+  this.getLatestInfo = function () {
+    if (!config.auto_check_update) {
+      return null;
+    }
+    var dailyCheckStorage = storageFactory.getValueByKey(DAILY_UPDATE_CHECK_STORAGE);
+    if (dailyCheckStorage.checked) {
+      logUtils.debugInfo(['今日已经检测过版本更新，当前最新版本为：「{}」', dailyCheckStorage.latestVersion]);
+      return dailyCheckStorage.latestVersion;
+    }
+    if (this.latestUrl === '') {
+      return null;
+    }
+    var result = this.requestLatestInfo();
+    if (result == null) {
+      return null;
+    } else if ("Bad credentials" == result.message) {
+      // 可能access_token挂了，取消验证，但是可能会被限流
+      result = this.requestLatestInfo(true);
+    }
+    if (result.tag_name) {
+      storageFactory.updateValueByKey(UPDATE_STORAGE, {
+        latestVersion: result.tag_name,
+        updateNotes: result.body
+      });
+      storageFactory.updateValueByKey(DAILY_UPDATE_CHECK_STORAGE, {
+        checked: true,
+        latestVersion: result.tag_name
+      });
+      return result.tag_name;
+    }
+    return null;
+  };
+  this.hasNewVersion = function () {
+    if (!config.auto_check_update) {
+      return null;
+    }
+    var dailyCheckStorage = storageFactory.getValueByKey(DAILY_UPDATE_CHECK_STORAGE);
+    if (dailyCheckStorage.checked) {
+      if (this.getLocalVersion() < this.getLatestInfo()) {
+        return this.getLatestInfo();
+      }
+    }
+    return null;
+  };
+}
+
+// -- support func --
+function prepareDownloaderForPro(downloader) {
+  var is_pro = Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/);
+  if (is_pro) {
+    var origin = {};
+    var new_object = {};
+    downloader.setJsonResolver(new JSONResolver((0, _defineProperty2["default"])((0, _defineProperty2["default"])((0, _defineProperty2["default"])((0, _defineProperty2["default"])((0, _defineProperty2["default"])({
+      /**
+       * 将对象转换成 JSON字符串
+       *
+       * @param obj
+       * @return jsonString
+       */
+      toJSONString: function toJSONString(obj) {
+        return JSON.stringify(obj);
+      },
+      /**
+       * 根据json字符串获取 指定json key内容 并转为String
+       *
+       * @param jsonString
+       * @param name       key
+       * @return
+       */
+      getString: function getString(jsonString, name) {
+        if (arguments.length === 2) {
+          var v = JSON.parse(jsonString)[name];
+          return v ? v.toString() : '';
+        } else {
+          var _v = origin[arguments[0]];
+          return _v ? _v.toString() : '';
+        }
+      },
+      /**
+       * 可以嵌套调用 获取对象，不转为String
+       *
+       * @param jsonString
+       * @param name
+       * @return
+       */
+      getObject: function getObject(jsonString, name) {
+        return JSON.parse(jsonString)[name];
+      },
+      //---------------
+
+      /**
+       * 设置原始JSONString
+       *
+       * @param jsonString
+       * @return
+       */
+      setOrigin: function setOrigin(jsonString) {
+        origin = JSON.parse(jsonString);
+        return this;
+      }
+    }, "getString", function getString(name) {
+      if (arguments.length === 2) {
+        var jsonString = arguments[0];
+        name = arguments[1];
+        var v = JSON.parse(jsonString)[name];
+        return v ? v.toString() : '';
+      } else {
+        var _v2 = origin[name];
+        return _v2 ? _v2.toString() : '';
+      }
+    }), "getObject", function getObject(name) {
+      return origin[name];
+    }), "newObject", function newObject() {
+      new_object = {};
+      return this;
+    }), "put", function put(name, value) {
+      new_object[name] = value;
+      return this;
+    }), "toJSONString", function toJSONString() {
+      return JSON.stringify(new_object);
+    })));
+  }
+}
+
+/***/ }),
+
+/***/ "./src/lib/crypto-js.js":
+/*!******************************!*\
+  !*** ./src/lib/crypto-js.js ***!
+  \******************************/
+/***/ ((module, exports, __webpack_require__) => {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _typeof2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/typeof */ "./node_modules/@babel/runtime/helpers/typeof.js"));
+/**
+ * Minified by jsDelivr using Terser v3.14.1.
+ * Original file: /npm/crypto-js@3.3.0/crypto-js.js
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+!function (t, e) {
+  "object" == ( false ? 0 : (0, _typeof2["default"])(exports)) ? module.exports = exports = e() :  true ? !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (e),
+		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)) : 0;
+}(void 0, function () {
+  var t,
+    e,
+    r,
+    i,
+    n,
+    o,
+    s,
+    a,
+    c,
+    h,
+    l = l || function (t, e) {
+      var r = Object.create || function () {
+          function t() {}
+          return function (e) {
+            var r;
+            return t.prototype = e, r = new t(), t.prototype = null, r;
+          };
+        }(),
+        i = {},
+        n = i.lib = {},
+        o = n.Base = {
+          extend: function extend(t) {
+            var e = r(this);
+            return t && e.mixIn(t), e.hasOwnProperty("init") && this.init !== e.init || (e.init = function () {
+              e.$super.init.apply(this, arguments);
+            }), e.init.prototype = e, e.$super = this, e;
+          },
+          create: function create() {
+            var t = this.extend();
+            return t.init.apply(t, arguments), t;
+          },
+          init: function init() {},
+          mixIn: function mixIn(t) {
+            for (var e in t) t.hasOwnProperty(e) && (this[e] = t[e]);
+            t.hasOwnProperty("toString") && (this.toString = t.toString);
+          },
+          clone: function clone() {
+            return this.init.prototype.extend(this);
+          }
+        },
+        s = n.WordArray = o.extend({
+          init: function init(t, e) {
+            t = this.words = t || [], this.sigBytes = null != e ? e : 4 * t.length;
+          },
+          toString: function toString(t) {
+            return (t || c).stringify(this);
+          },
+          concat: function concat(t) {
+            var e = this.words,
+              r = t.words,
+              i = this.sigBytes,
+              n = t.sigBytes;
+            if (this.clamp(), i % 4) for (var o = 0; o < n; o++) {
+              var s = r[o >>> 2] >>> 24 - o % 4 * 8 & 255;
+              e[i + o >>> 2] |= s << 24 - (i + o) % 4 * 8;
+            } else for (o = 0; o < n; o += 4) e[i + o >>> 2] = r[o >>> 2];
+            return this.sigBytes += n, this;
+          },
+          clamp: function clamp() {
+            var e = this.words,
+              r = this.sigBytes;
+            e[r >>> 2] &= 4294967295 << 32 - r % 4 * 8, e.length = t.ceil(r / 4);
+          },
+          clone: function clone() {
+            var t = o.clone.call(this);
+            return t.words = this.words.slice(0), t;
+          },
+          random: function random(e) {
+            for (var r, i = [], n = function n(e) {
+                e = e;
+                var r = 987654321,
+                  i = 4294967295;
+                return function () {
+                  var n = ((r = 36969 * (65535 & r) + (r >> 16) & i) << 16) + (e = 18e3 * (65535 & e) + (e >> 16) & i) & i;
+                  return n /= 4294967296, (n += .5) * (t.random() > .5 ? 1 : -1);
+                };
+              }, o = 0; o < e; o += 4) {
+              var a = n(4294967296 * (r || t.random()));
+              r = 987654071 * a(), i.push(4294967296 * a() | 0);
+            }
+            return new s.init(i, e);
+          }
+        }),
+        a = i.enc = {},
+        c = a.Hex = {
+          stringify: function stringify(t) {
+            for (var e = t.words, r = t.sigBytes, i = [], n = 0; n < r; n++) {
+              var o = e[n >>> 2] >>> 24 - n % 4 * 8 & 255;
+              i.push((o >>> 4).toString(16)), i.push((15 & o).toString(16));
+            }
+            return i.join("");
+          },
+          parse: function parse(t) {
+            for (var e = t.length, r = [], i = 0; i < e; i += 2) r[i >>> 3] |= parseInt(t.substr(i, 2), 16) << 24 - i % 8 * 4;
+            return new s.init(r, e / 2);
+          }
+        },
+        h = a.Latin1 = {
+          stringify: function stringify(t) {
+            for (var e = t.words, r = t.sigBytes, i = [], n = 0; n < r; n++) {
+              var o = e[n >>> 2] >>> 24 - n % 4 * 8 & 255;
+              i.push(String.fromCharCode(o));
+            }
+            return i.join("");
+          },
+          parse: function parse(t) {
+            for (var e = t.length, r = [], i = 0; i < e; i++) r[i >>> 2] |= (255 & t.charCodeAt(i)) << 24 - i % 4 * 8;
+            return new s.init(r, e);
+          }
+        },
+        l = a.Utf8 = {
+          stringify: function stringify(t) {
+            try {
+              return decodeURIComponent(escape(h.stringify(t)));
+            } catch (t) {
+              throw new Error("Malformed UTF-8 data");
+            }
+          },
+          parse: function parse(t) {
+            return h.parse(unescape(encodeURIComponent(t)));
+          }
+        },
+        f = n.BufferedBlockAlgorithm = o.extend({
+          reset: function reset() {
+            this._data = new s.init(), this._nDataBytes = 0;
+          },
+          _append: function _append(t) {
+            "string" == typeof t && (t = l.parse(t)), this._data.concat(t), this._nDataBytes += t.sigBytes;
+          },
+          _process: function _process(e) {
+            var r = this._data,
+              i = r.words,
+              n = r.sigBytes,
+              o = this.blockSize,
+              a = n / (4 * o),
+              c = (a = e ? t.ceil(a) : t.max((0 | a) - this._minBufferSize, 0)) * o,
+              h = t.min(4 * c, n);
+            if (c) {
+              for (var l = 0; l < c; l += o) this._doProcessBlock(i, l);
+              var f = i.splice(0, c);
+              r.sigBytes -= h;
+            }
+            return new s.init(f, h);
+          },
+          clone: function clone() {
+            var t = o.clone.call(this);
+            return t._data = this._data.clone(), t;
+          },
+          _minBufferSize: 0
+        }),
+        u = (n.Hasher = f.extend({
+          cfg: o.extend(),
+          init: function init(t) {
+            this.cfg = this.cfg.extend(t), this.reset();
+          },
+          reset: function reset() {
+            f.reset.call(this), this._doReset();
+          },
+          update: function update(t) {
+            return this._append(t), this._process(), this;
+          },
+          finalize: function finalize(t) {
+            return t && this._append(t), this._doFinalize();
+          },
+          blockSize: 16,
+          _createHelper: function _createHelper(t) {
+            return function (e, r) {
+              return new t.init(r).finalize(e);
+            };
+          },
+          _createHmacHelper: function _createHmacHelper(t) {
+            return function (e, r) {
+              return new u.HMAC.init(t, r).finalize(e);
+            };
+          }
+        }), i.algo = {});
+      return i;
+    }(Math);
+  return function () {
+    var t = l,
+      e = t.lib.WordArray;
+    t.enc.Base64 = {
+      stringify: function stringify(t) {
+        var e = t.words,
+          r = t.sigBytes,
+          i = this._map;
+        t.clamp();
+        for (var n = [], o = 0; o < r; o += 3) for (var s = (e[o >>> 2] >>> 24 - o % 4 * 8 & 255) << 16 | (e[o + 1 >>> 2] >>> 24 - (o + 1) % 4 * 8 & 255) << 8 | e[o + 2 >>> 2] >>> 24 - (o + 2) % 4 * 8 & 255, a = 0; a < 4 && o + .75 * a < r; a++) n.push(i.charAt(s >>> 6 * (3 - a) & 63));
+        var c = i.charAt(64);
+        if (c) for (; n.length % 4;) n.push(c);
+        return n.join("");
+      },
+      parse: function parse(t) {
+        var r = t.length,
+          i = this._map,
+          n = this._reverseMap;
+        if (!n) {
+          n = this._reverseMap = [];
+          for (var o = 0; o < i.length; o++) n[i.charCodeAt(o)] = o;
+        }
+        var s = i.charAt(64);
+        if (s) {
+          var a = t.indexOf(s);
+          -1 !== a && (r = a);
+        }
+        return function (t, r, i) {
+          for (var n = [], o = 0, s = 0; s < r; s++) if (s % 4) {
+            var a = i[t.charCodeAt(s - 1)] << s % 4 * 2,
+              c = i[t.charCodeAt(s)] >>> 6 - s % 4 * 2;
+            n[o >>> 2] |= (a | c) << 24 - o % 4 * 8, o++;
+          }
+          return e.create(n, o);
+        }(t, r, n);
+      },
+      _map: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+    };
+  }(), function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.WordArray,
+      n = r.Hasher,
+      o = e.algo,
+      s = [];
+    !function () {
+      for (var e = 0; e < 64; e++) s[e] = 4294967296 * t.abs(t.sin(e + 1)) | 0;
+    }();
+    var a = o.MD5 = n.extend({
+      _doReset: function _doReset() {
+        this._hash = new i.init([1732584193, 4023233417, 2562383102, 271733878]);
+      },
+      _doProcessBlock: function _doProcessBlock(t, e) {
+        for (var r = 0; r < 16; r++) {
+          var i = e + r,
+            n = t[i];
+          t[i] = 16711935 & (n << 8 | n >>> 24) | 4278255360 & (n << 24 | n >>> 8);
+        }
+        var o = this._hash.words,
+          a = t[e + 0],
+          l = t[e + 1],
+          d = t[e + 2],
+          p = t[e + 3],
+          _ = t[e + 4],
+          v = t[e + 5],
+          y = t[e + 6],
+          g = t[e + 7],
+          B = t[e + 8],
+          w = t[e + 9],
+          k = t[e + 10],
+          S = t[e + 11],
+          m = t[e + 12],
+          x = t[e + 13],
+          b = t[e + 14],
+          H = t[e + 15],
+          z = o[0],
+          A = o[1],
+          C = o[2],
+          D = o[3];
+        z = c(z, A, C, D, a, 7, s[0]), D = c(D, z, A, C, l, 12, s[1]), C = c(C, D, z, A, d, 17, s[2]), A = c(A, C, D, z, p, 22, s[3]), z = c(z, A, C, D, _, 7, s[4]), D = c(D, z, A, C, v, 12, s[5]), C = c(C, D, z, A, y, 17, s[6]), A = c(A, C, D, z, g, 22, s[7]), z = c(z, A, C, D, B, 7, s[8]), D = c(D, z, A, C, w, 12, s[9]), C = c(C, D, z, A, k, 17, s[10]), A = c(A, C, D, z, S, 22, s[11]), z = c(z, A, C, D, m, 7, s[12]), D = c(D, z, A, C, x, 12, s[13]), C = c(C, D, z, A, b, 17, s[14]), z = h(z, A = c(A, C, D, z, H, 22, s[15]), C, D, l, 5, s[16]), D = h(D, z, A, C, y, 9, s[17]), C = h(C, D, z, A, S, 14, s[18]), A = h(A, C, D, z, a, 20, s[19]), z = h(z, A, C, D, v, 5, s[20]), D = h(D, z, A, C, k, 9, s[21]), C = h(C, D, z, A, H, 14, s[22]), A = h(A, C, D, z, _, 20, s[23]), z = h(z, A, C, D, w, 5, s[24]), D = h(D, z, A, C, b, 9, s[25]), C = h(C, D, z, A, p, 14, s[26]), A = h(A, C, D, z, B, 20, s[27]), z = h(z, A, C, D, x, 5, s[28]), D = h(D, z, A, C, d, 9, s[29]), C = h(C, D, z, A, g, 14, s[30]), z = f(z, A = h(A, C, D, z, m, 20, s[31]), C, D, v, 4, s[32]), D = f(D, z, A, C, B, 11, s[33]), C = f(C, D, z, A, S, 16, s[34]), A = f(A, C, D, z, b, 23, s[35]), z = f(z, A, C, D, l, 4, s[36]), D = f(D, z, A, C, _, 11, s[37]), C = f(C, D, z, A, g, 16, s[38]), A = f(A, C, D, z, k, 23, s[39]), z = f(z, A, C, D, x, 4, s[40]), D = f(D, z, A, C, a, 11, s[41]), C = f(C, D, z, A, p, 16, s[42]), A = f(A, C, D, z, y, 23, s[43]), z = f(z, A, C, D, w, 4, s[44]), D = f(D, z, A, C, m, 11, s[45]), C = f(C, D, z, A, H, 16, s[46]), z = u(z, A = f(A, C, D, z, d, 23, s[47]), C, D, a, 6, s[48]), D = u(D, z, A, C, g, 10, s[49]), C = u(C, D, z, A, b, 15, s[50]), A = u(A, C, D, z, v, 21, s[51]), z = u(z, A, C, D, m, 6, s[52]), D = u(D, z, A, C, p, 10, s[53]), C = u(C, D, z, A, k, 15, s[54]), A = u(A, C, D, z, l, 21, s[55]), z = u(z, A, C, D, B, 6, s[56]), D = u(D, z, A, C, H, 10, s[57]), C = u(C, D, z, A, y, 15, s[58]), A = u(A, C, D, z, x, 21, s[59]), z = u(z, A, C, D, _, 6, s[60]), D = u(D, z, A, C, S, 10, s[61]), C = u(C, D, z, A, d, 15, s[62]), A = u(A, C, D, z, w, 21, s[63]), o[0] = o[0] + z | 0, o[1] = o[1] + A | 0, o[2] = o[2] + C | 0, o[3] = o[3] + D | 0;
+      },
+      _doFinalize: function _doFinalize() {
+        var e = this._data,
+          r = e.words,
+          i = 8 * this._nDataBytes,
+          n = 8 * e.sigBytes;
+        r[n >>> 5] |= 128 << 24 - n % 32;
+        var o = t.floor(i / 4294967296),
+          s = i;
+        r[15 + (n + 64 >>> 9 << 4)] = 16711935 & (o << 8 | o >>> 24) | 4278255360 & (o << 24 | o >>> 8), r[14 + (n + 64 >>> 9 << 4)] = 16711935 & (s << 8 | s >>> 24) | 4278255360 & (s << 24 | s >>> 8), e.sigBytes = 4 * (r.length + 1), this._process();
+        for (var a = this._hash, c = a.words, h = 0; h < 4; h++) {
+          var l = c[h];
+          c[h] = 16711935 & (l << 8 | l >>> 24) | 4278255360 & (l << 24 | l >>> 8);
+        }
+        return a;
+      },
+      clone: function clone() {
+        var t = n.clone.call(this);
+        return t._hash = this._hash.clone(), t;
+      }
+    });
+    function c(t, e, r, i, n, o, s) {
+      var a = t + (e & r | ~e & i) + n + s;
+      return (a << o | a >>> 32 - o) + e;
+    }
+    function h(t, e, r, i, n, o, s) {
+      var a = t + (e & i | r & ~i) + n + s;
+      return (a << o | a >>> 32 - o) + e;
+    }
+    function f(t, e, r, i, n, o, s) {
+      var a = t + (e ^ r ^ i) + n + s;
+      return (a << o | a >>> 32 - o) + e;
+    }
+    function u(t, e, r, i, n, o, s) {
+      var a = t + (r ^ (e | ~i)) + n + s;
+      return (a << o | a >>> 32 - o) + e;
+    }
+    e.MD5 = n._createHelper(a), e.HmacMD5 = n._createHmacHelper(a);
+  }(Math), e = (t = l).lib, r = e.WordArray, i = e.Hasher, n = t.algo, o = [], s = n.SHA1 = i.extend({
+    _doReset: function _doReset() {
+      this._hash = new r.init([1732584193, 4023233417, 2562383102, 271733878, 3285377520]);
+    },
+    _doProcessBlock: function _doProcessBlock(t, e) {
+      for (var r = this._hash.words, i = r[0], n = r[1], s = r[2], a = r[3], c = r[4], h = 0; h < 80; h++) {
+        if (h < 16) o[h] = 0 | t[e + h];else {
+          var l = o[h - 3] ^ o[h - 8] ^ o[h - 14] ^ o[h - 16];
+          o[h] = l << 1 | l >>> 31;
+        }
+        var f = (i << 5 | i >>> 27) + c + o[h];
+        f += h < 20 ? 1518500249 + (n & s | ~n & a) : h < 40 ? 1859775393 + (n ^ s ^ a) : h < 60 ? (n & s | n & a | s & a) - 1894007588 : (n ^ s ^ a) - 899497514, c = a, a = s, s = n << 30 | n >>> 2, n = i, i = f;
+      }
+      r[0] = r[0] + i | 0, r[1] = r[1] + n | 0, r[2] = r[2] + s | 0, r[3] = r[3] + a | 0, r[4] = r[4] + c | 0;
+    },
+    _doFinalize: function _doFinalize() {
+      var t = this._data,
+        e = t.words,
+        r = 8 * this._nDataBytes,
+        i = 8 * t.sigBytes;
+      return e[i >>> 5] |= 128 << 24 - i % 32, e[14 + (i + 64 >>> 9 << 4)] = Math.floor(r / 4294967296), e[15 + (i + 64 >>> 9 << 4)] = r, t.sigBytes = 4 * e.length, this._process(), this._hash;
+    },
+    clone: function clone() {
+      var t = i.clone.call(this);
+      return t._hash = this._hash.clone(), t;
+    }
+  }), t.SHA1 = i._createHelper(s), t.HmacSHA1 = i._createHmacHelper(s), function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.WordArray,
+      n = r.Hasher,
+      o = e.algo,
+      s = [],
+      a = [];
+    !function () {
+      function e(e) {
+        for (var r = t.sqrt(e), i = 2; i <= r; i++) if (!(e % i)) return !1;
+        return !0;
+      }
+      function r(t) {
+        return 4294967296 * (t - (0 | t)) | 0;
+      }
+      for (var i = 2, n = 0; n < 64;) e(i) && (n < 8 && (s[n] = r(t.pow(i, .5))), a[n] = r(t.pow(i, 1 / 3)), n++), i++;
+    }();
+    var c = [],
+      h = o.SHA256 = n.extend({
+        _doReset: function _doReset() {
+          this._hash = new i.init(s.slice(0));
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          for (var r = this._hash.words, i = r[0], n = r[1], o = r[2], s = r[3], h = r[4], l = r[5], f = r[6], u = r[7], d = 0; d < 64; d++) {
+            if (d < 16) c[d] = 0 | t[e + d];else {
+              var p = c[d - 15],
+                _ = (p << 25 | p >>> 7) ^ (p << 14 | p >>> 18) ^ p >>> 3,
+                v = c[d - 2],
+                y = (v << 15 | v >>> 17) ^ (v << 13 | v >>> 19) ^ v >>> 10;
+              c[d] = _ + c[d - 7] + y + c[d - 16];
+            }
+            var g = i & n ^ i & o ^ n & o,
+              B = (i << 30 | i >>> 2) ^ (i << 19 | i >>> 13) ^ (i << 10 | i >>> 22),
+              w = u + ((h << 26 | h >>> 6) ^ (h << 21 | h >>> 11) ^ (h << 7 | h >>> 25)) + (h & l ^ ~h & f) + a[d] + c[d];
+            u = f, f = l, l = h, h = s + w | 0, s = o, o = n, n = i, i = w + (B + g) | 0;
+          }
+          r[0] = r[0] + i | 0, r[1] = r[1] + n | 0, r[2] = r[2] + o | 0, r[3] = r[3] + s | 0, r[4] = r[4] + h | 0, r[5] = r[5] + l | 0, r[6] = r[6] + f | 0, r[7] = r[7] + u | 0;
+        },
+        _doFinalize: function _doFinalize() {
+          var e = this._data,
+            r = e.words,
+            i = 8 * this._nDataBytes,
+            n = 8 * e.sigBytes;
+          return r[n >>> 5] |= 128 << 24 - n % 32, r[14 + (n + 64 >>> 9 << 4)] = t.floor(i / 4294967296), r[15 + (n + 64 >>> 9 << 4)] = i, e.sigBytes = 4 * r.length, this._process(), this._hash;
+        },
+        clone: function clone() {
+          var t = n.clone.call(this);
+          return t._hash = this._hash.clone(), t;
+        }
+      });
+    e.SHA256 = n._createHelper(h), e.HmacSHA256 = n._createHmacHelper(h);
+  }(Math), function () {
+    var t = l,
+      e = t.lib.WordArray,
+      r = t.enc;
+    r.Utf16 = r.Utf16BE = {
+      stringify: function stringify(t) {
+        for (var e = t.words, r = t.sigBytes, i = [], n = 0; n < r; n += 2) {
+          var o = e[n >>> 2] >>> 16 - n % 4 * 8 & 65535;
+          i.push(String.fromCharCode(o));
+        }
+        return i.join("");
+      },
+      parse: function parse(t) {
+        for (var r = t.length, i = [], n = 0; n < r; n++) i[n >>> 1] |= t.charCodeAt(n) << 16 - n % 2 * 16;
+        return e.create(i, 2 * r);
+      }
+    };
+    function i(t) {
+      return t << 8 & 4278255360 | t >>> 8 & 16711935;
+    }
+    r.Utf16LE = {
+      stringify: function stringify(t) {
+        for (var e = t.words, r = t.sigBytes, n = [], o = 0; o < r; o += 2) {
+          var s = i(e[o >>> 2] >>> 16 - o % 4 * 8 & 65535);
+          n.push(String.fromCharCode(s));
+        }
+        return n.join("");
+      },
+      parse: function parse(t) {
+        for (var r = t.length, n = [], o = 0; o < r; o++) n[o >>> 1] |= i(t.charCodeAt(o) << 16 - o % 2 * 16);
+        return e.create(n, 2 * r);
+      }
+    };
+  }(), function () {
+    if ("function" == typeof ArrayBuffer) {
+      var t = l.lib.WordArray,
+        e = t.init;
+      (t.init = function (t) {
+        if (t instanceof ArrayBuffer && (t = new Uint8Array(t)), (t instanceof Int8Array || "undefined" != typeof Uint8ClampedArray && t instanceof Uint8ClampedArray || t instanceof Int16Array || t instanceof Uint16Array || t instanceof Int32Array || t instanceof Uint32Array || t instanceof Float32Array || t instanceof Float64Array) && (t = new Uint8Array(t.buffer, t.byteOffset, t.byteLength)), t instanceof Uint8Array) {
+          for (var r = t.byteLength, i = [], n = 0; n < r; n++) i[n >>> 2] |= t[n] << 24 - n % 4 * 8;
+          e.call(this, i, r);
+        } else e.apply(this, arguments);
+      }).prototype = t;
+    }
+  }(), function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.WordArray,
+      n = r.Hasher,
+      o = e.algo,
+      s = i.create([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8, 3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12, 1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2, 4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13]),
+      a = i.create([5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12, 6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2, 15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13, 8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14, 12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11]),
+      c = i.create([11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8, 7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12, 11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5, 11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12, 9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6]),
+      h = i.create([8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6, 9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11, 9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5, 15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8, 8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11]),
+      f = i.create([0, 1518500249, 1859775393, 2400959708, 2840853838]),
+      u = i.create([1352829926, 1548603684, 1836072691, 2053994217, 0]),
+      d = o.RIPEMD160 = n.extend({
+        _doReset: function _doReset() {
+          this._hash = i.create([1732584193, 4023233417, 2562383102, 271733878, 3285377520]);
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          for (var r = 0; r < 16; r++) {
+            var i = e + r,
+              n = t[i];
+            t[i] = 16711935 & (n << 8 | n >>> 24) | 4278255360 & (n << 24 | n >>> 8);
+          }
+          var o,
+            l,
+            d,
+            w,
+            k,
+            S,
+            m,
+            x,
+            b,
+            H,
+            z,
+            A = this._hash.words,
+            C = f.words,
+            D = u.words,
+            R = s.words,
+            E = a.words,
+            M = c.words,
+            F = h.words;
+          S = o = A[0], m = l = A[1], x = d = A[2], b = w = A[3], H = k = A[4];
+          for (r = 0; r < 80; r += 1) z = o + t[e + R[r]] | 0, z += r < 16 ? p(l, d, w) + C[0] : r < 32 ? _(l, d, w) + C[1] : r < 48 ? v(l, d, w) + C[2] : r < 64 ? y(l, d, w) + C[3] : g(l, d, w) + C[4], z = (z = B(z |= 0, M[r])) + k | 0, o = k, k = w, w = B(d, 10), d = l, l = z, z = S + t[e + E[r]] | 0, z += r < 16 ? g(m, x, b) + D[0] : r < 32 ? y(m, x, b) + D[1] : r < 48 ? v(m, x, b) + D[2] : r < 64 ? _(m, x, b) + D[3] : p(m, x, b) + D[4], z = (z = B(z |= 0, F[r])) + H | 0, S = H, H = b, b = B(x, 10), x = m, m = z;
+          z = A[1] + d + b | 0, A[1] = A[2] + w + H | 0, A[2] = A[3] + k + S | 0, A[3] = A[4] + o + m | 0, A[4] = A[0] + l + x | 0, A[0] = z;
+        },
+        _doFinalize: function _doFinalize() {
+          var t = this._data,
+            e = t.words,
+            r = 8 * this._nDataBytes,
+            i = 8 * t.sigBytes;
+          e[i >>> 5] |= 128 << 24 - i % 32, e[14 + (i + 64 >>> 9 << 4)] = 16711935 & (r << 8 | r >>> 24) | 4278255360 & (r << 24 | r >>> 8), t.sigBytes = 4 * (e.length + 1), this._process();
+          for (var n = this._hash, o = n.words, s = 0; s < 5; s++) {
+            var a = o[s];
+            o[s] = 16711935 & (a << 8 | a >>> 24) | 4278255360 & (a << 24 | a >>> 8);
+          }
+          return n;
+        },
+        clone: function clone() {
+          var t = n.clone.call(this);
+          return t._hash = this._hash.clone(), t;
+        }
+      });
+    function p(t, e, r) {
+      return t ^ e ^ r;
+    }
+    function _(t, e, r) {
+      return t & e | ~t & r;
+    }
+    function v(t, e, r) {
+      return (t | ~e) ^ r;
+    }
+    function y(t, e, r) {
+      return t & r | e & ~r;
+    }
+    function g(t, e, r) {
+      return t ^ (e | ~r);
+    }
+    function B(t, e) {
+      return t << e | t >>> 32 - e;
+    }
+    e.RIPEMD160 = n._createHelper(d), e.HmacRIPEMD160 = n._createHmacHelper(d);
+  }(Math), function () {
+    var t = l,
+      e = t.lib.Base,
+      r = t.enc.Utf8;
+    t.algo.HMAC = e.extend({
+      init: function init(t, e) {
+        t = this._hasher = new t.init(), "string" == typeof e && (e = r.parse(e));
+        var i = t.blockSize,
+          n = 4 * i;
+        e.sigBytes > n && (e = t.finalize(e)), e.clamp();
+        for (var o = this._oKey = e.clone(), s = this._iKey = e.clone(), a = o.words, c = s.words, h = 0; h < i; h++) a[h] ^= 1549556828, c[h] ^= 909522486;
+        o.sigBytes = s.sigBytes = n, this.reset();
+      },
+      reset: function reset() {
+        var t = this._hasher;
+        t.reset(), t.update(this._iKey);
+      },
+      update: function update(t) {
+        return this._hasher.update(t), this;
+      },
+      finalize: function finalize(t) {
+        var e = this._hasher,
+          r = e.finalize(t);
+        return e.reset(), e.finalize(this._oKey.clone().concat(r));
+      }
+    });
+  }(), function () {
+    var t = l,
+      e = t.lib,
+      r = e.Base,
+      i = e.WordArray,
+      n = t.algo,
+      o = n.SHA1,
+      s = n.HMAC,
+      a = n.PBKDF2 = r.extend({
+        cfg: r.extend({
+          keySize: 4,
+          hasher: o,
+          iterations: 1
+        }),
+        init: function init(t) {
+          this.cfg = this.cfg.extend(t);
+        },
+        compute: function compute(t, e) {
+          for (var r = this.cfg, n = s.create(r.hasher, t), o = i.create(), a = i.create([1]), c = o.words, h = a.words, l = r.keySize, f = r.iterations; c.length < l;) {
+            var u = n.update(e).finalize(a);
+            n.reset();
+            for (var d = u.words, p = d.length, _ = u, v = 1; v < f; v++) {
+              _ = n.finalize(_), n.reset();
+              for (var y = _.words, g = 0; g < p; g++) d[g] ^= y[g];
+            }
+            o.concat(u), h[0]++;
+          }
+          return o.sigBytes = 4 * l, o;
+        }
+      });
+    t.PBKDF2 = function (t, e, r) {
+      return a.create(r).compute(t, e);
+    };
+  }(), function () {
+    var t = l,
+      e = t.lib,
+      r = e.Base,
+      i = e.WordArray,
+      n = t.algo,
+      o = n.MD5,
+      s = n.EvpKDF = r.extend({
+        cfg: r.extend({
+          keySize: 4,
+          hasher: o,
+          iterations: 1
+        }),
+        init: function init(t) {
+          this.cfg = this.cfg.extend(t);
+        },
+        compute: function compute(t, e) {
+          for (var r = this.cfg, n = r.hasher.create(), o = i.create(), s = o.words, a = r.keySize, c = r.iterations; s.length < a;) {
+            h && n.update(h);
+            var h = n.update(t).finalize(e);
+            n.reset();
+            for (var l = 1; l < c; l++) h = n.finalize(h), n.reset();
+            o.concat(h);
+          }
+          return o.sigBytes = 4 * a, o;
+        }
+      });
+    t.EvpKDF = function (t, e, r) {
+      return s.create(r).compute(t, e);
+    };
+  }(), function () {
+    var t = l,
+      e = t.lib.WordArray,
+      r = t.algo,
+      i = r.SHA256,
+      n = r.SHA224 = i.extend({
+        _doReset: function _doReset() {
+          this._hash = new e.init([3238371032, 914150663, 812702999, 4144912697, 4290775857, 1750603025, 1694076839, 3204075428]);
+        },
+        _doFinalize: function _doFinalize() {
+          var t = i._doFinalize.call(this);
+          return t.sigBytes -= 4, t;
+        }
+      });
+    t.SHA224 = i._createHelper(n), t.HmacSHA224 = i._createHmacHelper(n);
+  }(), function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.Base,
+      n = r.WordArray,
+      o = e.x64 = {};
+    o.Word = i.extend({
+      init: function init(t, e) {
+        this.high = t, this.low = e;
+      }
+    }), o.WordArray = i.extend({
+      init: function init(t, e) {
+        t = this.words = t || [], this.sigBytes = null != e ? e : 8 * t.length;
+      },
+      toX32: function toX32() {
+        for (var t = this.words, e = t.length, r = [], i = 0; i < e; i++) {
+          var o = t[i];
+          r.push(o.high), r.push(o.low);
+        }
+        return n.create(r, this.sigBytes);
+      },
+      clone: function clone() {
+        for (var t = i.clone.call(this), e = t.words = this.words.slice(0), r = e.length, n = 0; n < r; n++) e[n] = e[n].clone();
+        return t;
+      }
+    });
+  }(), function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.WordArray,
+      n = r.Hasher,
+      o = e.x64.Word,
+      s = e.algo,
+      a = [],
+      c = [],
+      h = [];
+    !function () {
+      for (var t = 1, e = 0, r = 0; r < 24; r++) {
+        a[t + 5 * e] = (r + 1) * (r + 2) / 2 % 64;
+        var i = (2 * t + 3 * e) % 5;
+        t = e % 5, e = i;
+      }
+      for (t = 0; t < 5; t++) for (e = 0; e < 5; e++) c[t + 5 * e] = e + (2 * t + 3 * e) % 5 * 5;
+      for (var n = 1, s = 0; s < 24; s++) {
+        for (var l = 0, f = 0, u = 0; u < 7; u++) {
+          if (1 & n) {
+            var d = (1 << u) - 1;
+            d < 32 ? f ^= 1 << d : l ^= 1 << d - 32;
+          }
+          128 & n ? n = n << 1 ^ 113 : n <<= 1;
+        }
+        h[s] = o.create(l, f);
+      }
+    }();
+    var f = [];
+    !function () {
+      for (var t = 0; t < 25; t++) f[t] = o.create();
+    }();
+    var u = s.SHA3 = n.extend({
+      cfg: n.cfg.extend({
+        outputLength: 512
+      }),
+      _doReset: function _doReset() {
+        for (var t = this._state = [], e = 0; e < 25; e++) t[e] = new o.init();
+        this.blockSize = (1600 - 2 * this.cfg.outputLength) / 32;
+      },
+      _doProcessBlock: function _doProcessBlock(t, e) {
+        for (var r = this._state, i = this.blockSize / 2, n = 0; n < i; n++) {
+          var o = t[e + 2 * n],
+            s = t[e + 2 * n + 1];
+          o = 16711935 & (o << 8 | o >>> 24) | 4278255360 & (o << 24 | o >>> 8), s = 16711935 & (s << 8 | s >>> 24) | 4278255360 & (s << 24 | s >>> 8), (A = r[n]).high ^= s, A.low ^= o;
+        }
+        for (var l = 0; l < 24; l++) {
+          for (var u = 0; u < 5; u++) {
+            for (var d = 0, p = 0, _ = 0; _ < 5; _++) {
+              d ^= (A = r[u + 5 * _]).high, p ^= A.low;
+            }
+            var v = f[u];
+            v.high = d, v.low = p;
+          }
+          for (u = 0; u < 5; u++) {
+            var y = f[(u + 4) % 5],
+              g = f[(u + 1) % 5],
+              B = g.high,
+              w = g.low;
+            for (d = y.high ^ (B << 1 | w >>> 31), p = y.low ^ (w << 1 | B >>> 31), _ = 0; _ < 5; _++) {
+              (A = r[u + 5 * _]).high ^= d, A.low ^= p;
+            }
+          }
+          for (var k = 1; k < 25; k++) {
+            var S = (A = r[k]).high,
+              m = A.low,
+              x = a[k];
+            if (x < 32) d = S << x | m >>> 32 - x, p = m << x | S >>> 32 - x;else d = m << x - 32 | S >>> 64 - x, p = S << x - 32 | m >>> 64 - x;
+            var b = f[c[k]];
+            b.high = d, b.low = p;
+          }
+          var H = f[0],
+            z = r[0];
+          H.high = z.high, H.low = z.low;
+          for (u = 0; u < 5; u++) for (_ = 0; _ < 5; _++) {
+            var A = r[k = u + 5 * _],
+              C = f[k],
+              D = f[(u + 1) % 5 + 5 * _],
+              R = f[(u + 2) % 5 + 5 * _];
+            A.high = C.high ^ ~D.high & R.high, A.low = C.low ^ ~D.low & R.low;
+          }
+          A = r[0];
+          var E = h[l];
+          A.high ^= E.high, A.low ^= E.low;
+        }
+      },
+      _doFinalize: function _doFinalize() {
+        var e = this._data,
+          r = e.words,
+          n = (this._nDataBytes, 8 * e.sigBytes),
+          o = 32 * this.blockSize;
+        r[n >>> 5] |= 1 << 24 - n % 32, r[(t.ceil((n + 1) / o) * o >>> 5) - 1] |= 128, e.sigBytes = 4 * r.length, this._process();
+        for (var s = this._state, a = this.cfg.outputLength / 8, c = a / 8, h = [], l = 0; l < c; l++) {
+          var f = s[l],
+            u = f.high,
+            d = f.low;
+          u = 16711935 & (u << 8 | u >>> 24) | 4278255360 & (u << 24 | u >>> 8), d = 16711935 & (d << 8 | d >>> 24) | 4278255360 & (d << 24 | d >>> 8), h.push(d), h.push(u);
+        }
+        return new i.init(h, a);
+      },
+      clone: function clone() {
+        for (var t = n.clone.call(this), e = t._state = this._state.slice(0), r = 0; r < 25; r++) e[r] = e[r].clone();
+        return t;
+      }
+    });
+    e.SHA3 = n._createHelper(u), e.HmacSHA3 = n._createHmacHelper(u);
+  }(Math), function () {
+    var t = l,
+      e = t.lib.Hasher,
+      r = t.x64,
+      i = r.Word,
+      n = r.WordArray,
+      o = t.algo;
+    function s() {
+      return i.create.apply(i, arguments);
+    }
+    var a = [s(1116352408, 3609767458), s(1899447441, 602891725), s(3049323471, 3964484399), s(3921009573, 2173295548), s(961987163, 4081628472), s(1508970993, 3053834265), s(2453635748, 2937671579), s(2870763221, 3664609560), s(3624381080, 2734883394), s(310598401, 1164996542), s(607225278, 1323610764), s(1426881987, 3590304994), s(1925078388, 4068182383), s(2162078206, 991336113), s(2614888103, 633803317), s(3248222580, 3479774868), s(3835390401, 2666613458), s(4022224774, 944711139), s(264347078, 2341262773), s(604807628, 2007800933), s(770255983, 1495990901), s(1249150122, 1856431235), s(1555081692, 3175218132), s(1996064986, 2198950837), s(2554220882, 3999719339), s(2821834349, 766784016), s(2952996808, 2566594879), s(3210313671, 3203337956), s(3336571891, 1034457026), s(3584528711, 2466948901), s(113926993, 3758326383), s(338241895, 168717936), s(666307205, 1188179964), s(773529912, 1546045734), s(1294757372, 1522805485), s(1396182291, 2643833823), s(1695183700, 2343527390), s(1986661051, 1014477480), s(2177026350, 1206759142), s(2456956037, 344077627), s(2730485921, 1290863460), s(2820302411, 3158454273), s(3259730800, 3505952657), s(3345764771, 106217008), s(3516065817, 3606008344), s(3600352804, 1432725776), s(4094571909, 1467031594), s(275423344, 851169720), s(430227734, 3100823752), s(506948616, 1363258195), s(659060556, 3750685593), s(883997877, 3785050280), s(958139571, 3318307427), s(1322822218, 3812723403), s(1537002063, 2003034995), s(1747873779, 3602036899), s(1955562222, 1575990012), s(2024104815, 1125592928), s(2227730452, 2716904306), s(2361852424, 442776044), s(2428436474, 593698344), s(2756734187, 3733110249), s(3204031479, 2999351573), s(3329325298, 3815920427), s(3391569614, 3928383900), s(3515267271, 566280711), s(3940187606, 3454069534), s(4118630271, 4000239992), s(116418474, 1914138554), s(174292421, 2731055270), s(289380356, 3203993006), s(460393269, 320620315), s(685471733, 587496836), s(852142971, 1086792851), s(1017036298, 365543100), s(1126000580, 2618297676), s(1288033470, 3409855158), s(1501505948, 4234509866), s(1607167915, 987167468), s(1816402316, 1246189591)],
+      c = [];
+    !function () {
+      for (var t = 0; t < 80; t++) c[t] = s();
+    }();
+    var h = o.SHA512 = e.extend({
+      _doReset: function _doReset() {
+        this._hash = new n.init([new i.init(1779033703, 4089235720), new i.init(3144134277, 2227873595), new i.init(1013904242, 4271175723), new i.init(2773480762, 1595750129), new i.init(1359893119, 2917565137), new i.init(2600822924, 725511199), new i.init(528734635, 4215389547), new i.init(1541459225, 327033209)]);
+      },
+      _doProcessBlock: function _doProcessBlock(t, e) {
+        for (var r = this._hash.words, i = r[0], n = r[1], o = r[2], s = r[3], h = r[4], l = r[5], f = r[6], u = r[7], d = i.high, p = i.low, _ = n.high, v = n.low, y = o.high, g = o.low, B = s.high, w = s.low, k = h.high, S = h.low, m = l.high, x = l.low, b = f.high, H = f.low, z = u.high, A = u.low, C = d, D = p, R = _, E = v, M = y, F = g, P = B, W = w, O = k, U = S, I = m, K = x, X = b, L = H, j = z, N = A, T = 0; T < 80; T++) {
+          var Z = c[T];
+          if (T < 16) var q = Z.high = 0 | t[e + 2 * T],
+            G = Z.low = 0 | t[e + 2 * T + 1];else {
+            var J = c[T - 15],
+              $ = J.high,
+              Q = J.low,
+              V = ($ >>> 1 | Q << 31) ^ ($ >>> 8 | Q << 24) ^ $ >>> 7,
+              Y = (Q >>> 1 | $ << 31) ^ (Q >>> 8 | $ << 24) ^ (Q >>> 7 | $ << 25),
+              tt = c[T - 2],
+              et = tt.high,
+              rt = tt.low,
+              it = (et >>> 19 | rt << 13) ^ (et << 3 | rt >>> 29) ^ et >>> 6,
+              nt = (rt >>> 19 | et << 13) ^ (rt << 3 | et >>> 29) ^ (rt >>> 6 | et << 26),
+              ot = c[T - 7],
+              st = ot.high,
+              at = ot.low,
+              ct = c[T - 16],
+              ht = ct.high,
+              lt = ct.low;
+            q = (q = (q = V + st + ((G = Y + at) >>> 0 < Y >>> 0 ? 1 : 0)) + it + ((G = G + nt) >>> 0 < nt >>> 0 ? 1 : 0)) + ht + ((G = G + lt) >>> 0 < lt >>> 0 ? 1 : 0);
+            Z.high = q, Z.low = G;
+          }
+          var ft,
+            ut = O & I ^ ~O & X,
+            dt = U & K ^ ~U & L,
+            pt = C & R ^ C & M ^ R & M,
+            _t = D & E ^ D & F ^ E & F,
+            vt = (C >>> 28 | D << 4) ^ (C << 30 | D >>> 2) ^ (C << 25 | D >>> 7),
+            yt = (D >>> 28 | C << 4) ^ (D << 30 | C >>> 2) ^ (D << 25 | C >>> 7),
+            gt = (O >>> 14 | U << 18) ^ (O >>> 18 | U << 14) ^ (O << 23 | U >>> 9),
+            Bt = (U >>> 14 | O << 18) ^ (U >>> 18 | O << 14) ^ (U << 23 | O >>> 9),
+            wt = a[T],
+            kt = wt.high,
+            St = wt.low,
+            mt = j + gt + ((ft = N + Bt) >>> 0 < N >>> 0 ? 1 : 0),
+            xt = yt + _t;
+          j = X, N = L, X = I, L = K, I = O, K = U, O = P + (mt = (mt = (mt = mt + ut + ((ft = ft + dt) >>> 0 < dt >>> 0 ? 1 : 0)) + kt + ((ft = ft + St) >>> 0 < St >>> 0 ? 1 : 0)) + q + ((ft = ft + G) >>> 0 < G >>> 0 ? 1 : 0)) + ((U = W + ft | 0) >>> 0 < W >>> 0 ? 1 : 0) | 0, P = M, W = F, M = R, F = E, R = C, E = D, C = mt + (vt + pt + (xt >>> 0 < yt >>> 0 ? 1 : 0)) + ((D = ft + xt | 0) >>> 0 < ft >>> 0 ? 1 : 0) | 0;
+        }
+        p = i.low = p + D, i.high = d + C + (p >>> 0 < D >>> 0 ? 1 : 0), v = n.low = v + E, n.high = _ + R + (v >>> 0 < E >>> 0 ? 1 : 0), g = o.low = g + F, o.high = y + M + (g >>> 0 < F >>> 0 ? 1 : 0), w = s.low = w + W, s.high = B + P + (w >>> 0 < W >>> 0 ? 1 : 0), S = h.low = S + U, h.high = k + O + (S >>> 0 < U >>> 0 ? 1 : 0), x = l.low = x + K, l.high = m + I + (x >>> 0 < K >>> 0 ? 1 : 0), H = f.low = H + L, f.high = b + X + (H >>> 0 < L >>> 0 ? 1 : 0), A = u.low = A + N, u.high = z + j + (A >>> 0 < N >>> 0 ? 1 : 0);
+      },
+      _doFinalize: function _doFinalize() {
+        var t = this._data,
+          e = t.words,
+          r = 8 * this._nDataBytes,
+          i = 8 * t.sigBytes;
+        return e[i >>> 5] |= 128 << 24 - i % 32, e[30 + (i + 128 >>> 10 << 5)] = Math.floor(r / 4294967296), e[31 + (i + 128 >>> 10 << 5)] = r, t.sigBytes = 4 * e.length, this._process(), this._hash.toX32();
+      },
+      clone: function clone() {
+        var t = e.clone.call(this);
+        return t._hash = this._hash.clone(), t;
+      },
+      blockSize: 32
+    });
+    t.SHA512 = e._createHelper(h), t.HmacSHA512 = e._createHmacHelper(h);
+  }(), function () {
+    var t = l,
+      e = t.x64,
+      r = e.Word,
+      i = e.WordArray,
+      n = t.algo,
+      o = n.SHA512,
+      s = n.SHA384 = o.extend({
+        _doReset: function _doReset() {
+          this._hash = new i.init([new r.init(3418070365, 3238371032), new r.init(1654270250, 914150663), new r.init(2438529370, 812702999), new r.init(355462360, 4144912697), new r.init(1731405415, 4290775857), new r.init(2394180231, 1750603025), new r.init(3675008525, 1694076839), new r.init(1203062813, 3204075428)]);
+        },
+        _doFinalize: function _doFinalize() {
+          var t = o._doFinalize.call(this);
+          return t.sigBytes -= 16, t;
+        }
+      });
+    t.SHA384 = o._createHelper(s), t.HmacSHA384 = o._createHmacHelper(s);
+  }(), l.lib.Cipher || function (t) {
+    var e = l,
+      r = e.lib,
+      i = r.Base,
+      n = r.WordArray,
+      o = r.BufferedBlockAlgorithm,
+      s = e.enc,
+      a = (s.Utf8, s.Base64),
+      c = e.algo.EvpKDF,
+      h = r.Cipher = o.extend({
+        cfg: i.extend(),
+        createEncryptor: function createEncryptor(t, e) {
+          return this.create(this._ENC_XFORM_MODE, t, e);
+        },
+        createDecryptor: function createDecryptor(t, e) {
+          return this.create(this._DEC_XFORM_MODE, t, e);
+        },
+        init: function init(t, e, r) {
+          this.cfg = this.cfg.extend(r), this._xformMode = t, this._key = e, this.reset();
+        },
+        reset: function reset() {
+          o.reset.call(this), this._doReset();
+        },
+        process: function process(t) {
+          return this._append(t), this._process();
+        },
+        finalize: function finalize(t) {
+          return t && this._append(t), this._doFinalize();
+        },
+        keySize: 4,
+        ivSize: 4,
+        _ENC_XFORM_MODE: 1,
+        _DEC_XFORM_MODE: 2,
+        _createHelper: function () {
+          function t(t) {
+            return "string" == typeof t ? B : y;
+          }
+          return function (e) {
+            return {
+              encrypt: function encrypt(r, i, n) {
+                return t(i).encrypt(e, r, i, n);
+              },
+              decrypt: function decrypt(r, i, n) {
+                return t(i).decrypt(e, r, i, n);
+              }
+            };
+          };
+        }()
+      }),
+      f = (r.StreamCipher = h.extend({
+        _doFinalize: function _doFinalize() {
+          return this._process(!0);
+        },
+        blockSize: 1
+      }), e.mode = {}),
+      u = r.BlockCipherMode = i.extend({
+        createEncryptor: function createEncryptor(t, e) {
+          return this.Encryptor.create(t, e);
+        },
+        createDecryptor: function createDecryptor(t, e) {
+          return this.Decryptor.create(t, e);
+        },
+        init: function init(t, e) {
+          this._cipher = t, this._iv = e;
+        }
+      }),
+      d = f.CBC = function () {
+        var e = u.extend();
+        function r(e, r, i) {
+          var n = this._iv;
+          if (n) {
+            var o = n;
+            this._iv = t;
+          } else o = this._prevBlock;
+          for (var s = 0; s < i; s++) e[r + s] ^= o[s];
+        }
+        return e.Encryptor = e.extend({
+          processBlock: function processBlock(t, e) {
+            var i = this._cipher,
+              n = i.blockSize;
+            r.call(this, t, e, n), i.encryptBlock(t, e), this._prevBlock = t.slice(e, e + n);
+          }
+        }), e.Decryptor = e.extend({
+          processBlock: function processBlock(t, e) {
+            var i = this._cipher,
+              n = i.blockSize,
+              o = t.slice(e, e + n);
+            i.decryptBlock(t, e), r.call(this, t, e, n), this._prevBlock = o;
+          }
+        }), e;
+      }(),
+      p = (e.pad = {}).Pkcs7 = {
+        pad: function pad(t, e) {
+          for (var r = 4 * e, i = r - t.sigBytes % r, o = i << 24 | i << 16 | i << 8 | i, s = [], a = 0; a < i; a += 4) s.push(o);
+          var c = n.create(s, i);
+          t.concat(c);
+        },
+        unpad: function unpad(t) {
+          var e = 255 & t.words[t.sigBytes - 1 >>> 2];
+          t.sigBytes -= e;
+        }
+      },
+      _ = (r.BlockCipher = h.extend({
+        cfg: h.cfg.extend({
+          mode: d,
+          padding: p
+        }),
+        reset: function reset() {
+          h.reset.call(this);
+          var t = this.cfg,
+            e = t.iv,
+            r = t.mode;
+          if (this._xformMode == this._ENC_XFORM_MODE) var i = r.createEncryptor;else {
+            i = r.createDecryptor;
+            this._minBufferSize = 1;
+          }
+          this._mode && this._mode.__creator == i ? this._mode.init(this, e && e.words) : (this._mode = i.call(r, this, e && e.words), this._mode.__creator = i);
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          this._mode.processBlock(t, e);
+        },
+        _doFinalize: function _doFinalize() {
+          var t = this.cfg.padding;
+          if (this._xformMode == this._ENC_XFORM_MODE) {
+            t.pad(this._data, this.blockSize);
+            var e = this._process(!0);
+          } else {
+            e = this._process(!0);
+            t.unpad(e);
+          }
+          return e;
+        },
+        blockSize: 4
+      }), r.CipherParams = i.extend({
+        init: function init(t) {
+          this.mixIn(t);
+        },
+        toString: function toString(t) {
+          return (t || this.formatter).stringify(this);
+        }
+      })),
+      v = (e.format = {}).OpenSSL = {
+        stringify: function stringify(t) {
+          var e = t.ciphertext,
+            r = t.salt;
+          if (r) var i = n.create([1398893684, 1701076831]).concat(r).concat(e);else i = e;
+          return i.toString(a);
+        },
+        parse: function parse(t) {
+          var e = a.parse(t),
+            r = e.words;
+          if (1398893684 == r[0] && 1701076831 == r[1]) {
+            var i = n.create(r.slice(2, 4));
+            r.splice(0, 4), e.sigBytes -= 16;
+          }
+          return _.create({
+            ciphertext: e,
+            salt: i
+          });
+        }
+      },
+      y = r.SerializableCipher = i.extend({
+        cfg: i.extend({
+          format: v
+        }),
+        encrypt: function encrypt(t, e, r, i) {
+          i = this.cfg.extend(i);
+          var n = t.createEncryptor(r, i),
+            o = n.finalize(e),
+            s = n.cfg;
+          return _.create({
+            ciphertext: o,
+            key: r,
+            iv: s.iv,
+            algorithm: t,
+            mode: s.mode,
+            padding: s.padding,
+            blockSize: t.blockSize,
+            formatter: i.format
+          });
+        },
+        decrypt: function decrypt(t, e, r, i) {
+          return i = this.cfg.extend(i), e = this._parse(e, i.format), t.createDecryptor(r, i).finalize(e.ciphertext);
+        },
+        _parse: function _parse(t, e) {
+          return "string" == typeof t ? e.parse(t, this) : t;
+        }
+      }),
+      g = (e.kdf = {}).OpenSSL = {
+        execute: function execute(t, e, r, i) {
+          i || (i = n.random(8));
+          var o = c.create({
+              keySize: e + r
+            }).compute(t, i),
+            s = n.create(o.words.slice(e), 4 * r);
+          return o.sigBytes = 4 * e, _.create({
+            key: o,
+            iv: s,
+            salt: i
+          });
+        }
+      },
+      B = r.PasswordBasedCipher = y.extend({
+        cfg: y.cfg.extend({
+          kdf: g
+        }),
+        encrypt: function encrypt(t, e, r, i) {
+          var n = (i = this.cfg.extend(i)).kdf.execute(r, t.keySize, t.ivSize);
+          i.iv = n.iv;
+          var o = y.encrypt.call(this, t, e, n.key, i);
+          return o.mixIn(n), o;
+        },
+        decrypt: function decrypt(t, e, r, i) {
+          i = this.cfg.extend(i), e = this._parse(e, i.format);
+          var n = i.kdf.execute(r, t.keySize, t.ivSize, e.salt);
+          return i.iv = n.iv, y.decrypt.call(this, t, e, n.key, i);
+        }
+      });
+  }(), l.mode.CFB = function () {
+    var t = l.lib.BlockCipherMode.extend();
+    function e(t, e, r, i) {
+      var n = this._iv;
+      if (n) {
+        var o = n.slice(0);
+        this._iv = void 0;
+      } else o = this._prevBlock;
+      i.encryptBlock(o, 0);
+      for (var s = 0; s < r; s++) t[e + s] ^= o[s];
+    }
+    return t.Encryptor = t.extend({
+      processBlock: function processBlock(t, r) {
+        var i = this._cipher,
+          n = i.blockSize;
+        e.call(this, t, r, n, i), this._prevBlock = t.slice(r, r + n);
+      }
+    }), t.Decryptor = t.extend({
+      processBlock: function processBlock(t, r) {
+        var i = this._cipher,
+          n = i.blockSize,
+          o = t.slice(r, r + n);
+        e.call(this, t, r, n, i), this._prevBlock = o;
+      }
+    }), t;
+  }(), l.mode.ECB = ((a = l.lib.BlockCipherMode.extend()).Encryptor = a.extend({
+    processBlock: function processBlock(t, e) {
+      this._cipher.encryptBlock(t, e);
+    }
+  }), a.Decryptor = a.extend({
+    processBlock: function processBlock(t, e) {
+      this._cipher.decryptBlock(t, e);
+    }
+  }), a), l.pad.AnsiX923 = {
+    pad: function pad(t, e) {
+      var r = t.sigBytes,
+        i = 4 * e,
+        n = i - r % i,
+        o = r + n - 1;
+      t.clamp(), t.words[o >>> 2] |= n << 24 - o % 4 * 8, t.sigBytes += n;
+    },
+    unpad: function unpad(t) {
+      var e = 255 & t.words[t.sigBytes - 1 >>> 2];
+      t.sigBytes -= e;
+    }
+  }, l.pad.Iso10126 = {
+    pad: function pad(t, e) {
+      var r = 4 * e,
+        i = r - t.sigBytes % r;
+      t.concat(l.lib.WordArray.random(i - 1)).concat(l.lib.WordArray.create([i << 24], 1));
+    },
+    unpad: function unpad(t) {
+      var e = 255 & t.words[t.sigBytes - 1 >>> 2];
+      t.sigBytes -= e;
+    }
+  }, l.pad.Iso97971 = {
+    pad: function pad(t, e) {
+      t.concat(l.lib.WordArray.create([2147483648], 1)), l.pad.ZeroPadding.pad(t, e);
+    },
+    unpad: function unpad(t) {
+      l.pad.ZeroPadding.unpad(t), t.sigBytes--;
+    }
+  }, l.mode.OFB = (c = l.lib.BlockCipherMode.extend(), h = c.Encryptor = c.extend({
+    processBlock: function processBlock(t, e) {
+      var r = this._cipher,
+        i = r.blockSize,
+        n = this._iv,
+        o = this._keystream;
+      n && (o = this._keystream = n.slice(0), this._iv = void 0), r.encryptBlock(o, 0);
+      for (var s = 0; s < i; s++) t[e + s] ^= o[s];
+    }
+  }), c.Decryptor = h, c), l.pad.NoPadding = {
+    pad: function pad() {},
+    unpad: function unpad() {}
+  }, function (t) {
+    var e = l,
+      r = e.lib.CipherParams,
+      i = e.enc.Hex;
+    e.format.Hex = {
+      stringify: function stringify(t) {
+        return t.ciphertext.toString(i);
+      },
+      parse: function parse(t) {
+        var e = i.parse(t);
+        return r.create({
+          ciphertext: e
+        });
+      }
+    };
+  }(), function () {
+    var t = l,
+      e = t.lib.BlockCipher,
+      r = t.algo,
+      i = [],
+      n = [],
+      o = [],
+      s = [],
+      a = [],
+      c = [],
+      h = [],
+      f = [],
+      u = [],
+      d = [];
+    !function () {
+      for (var t = [], e = 0; e < 256; e++) t[e] = e < 128 ? e << 1 : e << 1 ^ 283;
+      var r = 0,
+        l = 0;
+      for (e = 0; e < 256; e++) {
+        var p = l ^ l << 1 ^ l << 2 ^ l << 3 ^ l << 4;
+        p = p >>> 8 ^ 255 & p ^ 99, i[r] = p, n[p] = r;
+        var _ = t[r],
+          v = t[_],
+          y = t[v],
+          g = 257 * t[p] ^ 16843008 * p;
+        o[r] = g << 24 | g >>> 8, s[r] = g << 16 | g >>> 16, a[r] = g << 8 | g >>> 24, c[r] = g;
+        g = 16843009 * y ^ 65537 * v ^ 257 * _ ^ 16843008 * r;
+        h[p] = g << 24 | g >>> 8, f[p] = g << 16 | g >>> 16, u[p] = g << 8 | g >>> 24, d[p] = g, r ? (r = _ ^ t[t[t[y ^ _]]], l ^= t[t[l]]) : r = l = 1;
+      }
+    }();
+    var p = [0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54],
+      _ = r.AES = e.extend({
+        _doReset: function _doReset() {
+          if (!this._nRounds || this._keyPriorReset !== this._key) {
+            for (var t = this._keyPriorReset = this._key, e = t.words, r = t.sigBytes / 4, n = 4 * ((this._nRounds = r + 6) + 1), o = this._keySchedule = [], s = 0; s < n; s++) if (s < r) o[s] = e[s];else {
+              var a = o[s - 1];
+              s % r ? r > 6 && s % r == 4 && (a = i[a >>> 24] << 24 | i[a >>> 16 & 255] << 16 | i[a >>> 8 & 255] << 8 | i[255 & a]) : (a = i[(a = a << 8 | a >>> 24) >>> 24] << 24 | i[a >>> 16 & 255] << 16 | i[a >>> 8 & 255] << 8 | i[255 & a], a ^= p[s / r | 0] << 24), o[s] = o[s - r] ^ a;
+            }
+            for (var c = this._invKeySchedule = [], l = 0; l < n; l++) {
+              s = n - l;
+              if (l % 4) a = o[s];else a = o[s - 4];
+              c[l] = l < 4 || s <= 4 ? a : h[i[a >>> 24]] ^ f[i[a >>> 16 & 255]] ^ u[i[a >>> 8 & 255]] ^ d[i[255 & a]];
+            }
+          }
+        },
+        encryptBlock: function encryptBlock(t, e) {
+          this._doCryptBlock(t, e, this._keySchedule, o, s, a, c, i);
+        },
+        decryptBlock: function decryptBlock(t, e) {
+          var r = t[e + 1];
+          t[e + 1] = t[e + 3], t[e + 3] = r, this._doCryptBlock(t, e, this._invKeySchedule, h, f, u, d, n);
+          r = t[e + 1];
+          t[e + 1] = t[e + 3], t[e + 3] = r;
+        },
+        _doCryptBlock: function _doCryptBlock(t, e, r, i, n, o, s, a) {
+          for (var c = this._nRounds, h = t[e] ^ r[0], l = t[e + 1] ^ r[1], f = t[e + 2] ^ r[2], u = t[e + 3] ^ r[3], d = 4, p = 1; p < c; p++) {
+            var _ = i[h >>> 24] ^ n[l >>> 16 & 255] ^ o[f >>> 8 & 255] ^ s[255 & u] ^ r[d++],
+              v = i[l >>> 24] ^ n[f >>> 16 & 255] ^ o[u >>> 8 & 255] ^ s[255 & h] ^ r[d++],
+              y = i[f >>> 24] ^ n[u >>> 16 & 255] ^ o[h >>> 8 & 255] ^ s[255 & l] ^ r[d++],
+              g = i[u >>> 24] ^ n[h >>> 16 & 255] ^ o[l >>> 8 & 255] ^ s[255 & f] ^ r[d++];
+            h = _, l = v, f = y, u = g;
+          }
+          _ = (a[h >>> 24] << 24 | a[l >>> 16 & 255] << 16 | a[f >>> 8 & 255] << 8 | a[255 & u]) ^ r[d++], v = (a[l >>> 24] << 24 | a[f >>> 16 & 255] << 16 | a[u >>> 8 & 255] << 8 | a[255 & h]) ^ r[d++], y = (a[f >>> 24] << 24 | a[u >>> 16 & 255] << 16 | a[h >>> 8 & 255] << 8 | a[255 & l]) ^ r[d++], g = (a[u >>> 24] << 24 | a[h >>> 16 & 255] << 16 | a[l >>> 8 & 255] << 8 | a[255 & f]) ^ r[d++];
+          t[e] = _, t[e + 1] = v, t[e + 2] = y, t[e + 3] = g;
+        },
+        keySize: 8
+      });
+    t.AES = e._createHelper(_);
+  }(), function () {
+    var t = l,
+      e = t.lib,
+      r = e.WordArray,
+      i = e.BlockCipher,
+      n = t.algo,
+      o = [57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 27, 19, 11, 3, 60, 52, 44, 36, 63, 55, 47, 39, 31, 23, 15, 7, 62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 28, 20, 12, 4],
+      s = [14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 41, 52, 31, 37, 47, 55, 30, 40, 51, 45, 33, 48, 44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32],
+      a = [1, 2, 4, 6, 8, 10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 28],
+      c = [{
+        0: 8421888,
+        268435456: 32768,
+        536870912: 8421378,
+        805306368: 2,
+        1073741824: 512,
+        1342177280: 8421890,
+        1610612736: 8389122,
+        1879048192: 8388608,
+        2147483648: 514,
+        2415919104: 8389120,
+        2684354560: 33280,
+        2952790016: 8421376,
+        3221225472: 32770,
+        3489660928: 8388610,
+        3758096384: 0,
+        4026531840: 33282,
+        134217728: 0,
+        402653184: 8421890,
+        671088640: 33282,
+        939524096: 32768,
+        1207959552: 8421888,
+        1476395008: 512,
+        1744830464: 8421378,
+        2013265920: 2,
+        2281701376: 8389120,
+        2550136832: 33280,
+        2818572288: 8421376,
+        3087007744: 8389122,
+        3355443200: 8388610,
+        3623878656: 32770,
+        3892314112: 514,
+        4160749568: 8388608,
+        1: 32768,
+        268435457: 2,
+        536870913: 8421888,
+        805306369: 8388608,
+        1073741825: 8421378,
+        1342177281: 33280,
+        1610612737: 512,
+        1879048193: 8389122,
+        2147483649: 8421890,
+        2415919105: 8421376,
+        2684354561: 8388610,
+        2952790017: 33282,
+        3221225473: 514,
+        3489660929: 8389120,
+        3758096385: 32770,
+        4026531841: 0,
+        134217729: 8421890,
+        402653185: 8421376,
+        671088641: 8388608,
+        939524097: 512,
+        1207959553: 32768,
+        1476395009: 8388610,
+        1744830465: 2,
+        2013265921: 33282,
+        2281701377: 32770,
+        2550136833: 8389122,
+        2818572289: 514,
+        3087007745: 8421888,
+        3355443201: 8389120,
+        3623878657: 0,
+        3892314113: 33280,
+        4160749569: 8421378
+      }, {
+        0: 1074282512,
+        16777216: 16384,
+        33554432: 524288,
+        50331648: 1074266128,
+        67108864: 1073741840,
+        83886080: 1074282496,
+        100663296: 1073758208,
+        117440512: 16,
+        134217728: 540672,
+        150994944: 1073758224,
+        167772160: 1073741824,
+        184549376: 540688,
+        201326592: 524304,
+        218103808: 0,
+        234881024: 16400,
+        251658240: 1074266112,
+        8388608: 1073758208,
+        25165824: 540688,
+        41943040: 16,
+        58720256: 1073758224,
+        75497472: 1074282512,
+        92274688: 1073741824,
+        109051904: 524288,
+        125829120: 1074266128,
+        142606336: 524304,
+        159383552: 0,
+        176160768: 16384,
+        192937984: 1074266112,
+        209715200: 1073741840,
+        226492416: 540672,
+        243269632: 1074282496,
+        260046848: 16400,
+        268435456: 0,
+        285212672: 1074266128,
+        301989888: 1073758224,
+        318767104: 1074282496,
+        335544320: 1074266112,
+        352321536: 16,
+        369098752: 540688,
+        385875968: 16384,
+        402653184: 16400,
+        419430400: 524288,
+        436207616: 524304,
+        452984832: 1073741840,
+        469762048: 540672,
+        486539264: 1073758208,
+        503316480: 1073741824,
+        520093696: 1074282512,
+        276824064: 540688,
+        293601280: 524288,
+        310378496: 1074266112,
+        327155712: 16384,
+        343932928: 1073758208,
+        360710144: 1074282512,
+        377487360: 16,
+        394264576: 1073741824,
+        411041792: 1074282496,
+        427819008: 1073741840,
+        444596224: 1073758224,
+        461373440: 524304,
+        478150656: 0,
+        494927872: 16400,
+        511705088: 1074266128,
+        528482304: 540672
+      }, {
+        0: 260,
+        1048576: 0,
+        2097152: 67109120,
+        3145728: 65796,
+        4194304: 65540,
+        5242880: 67108868,
+        6291456: 67174660,
+        7340032: 67174400,
+        8388608: 67108864,
+        9437184: 67174656,
+        10485760: 65792,
+        11534336: 67174404,
+        12582912: 67109124,
+        13631488: 65536,
+        14680064: 4,
+        15728640: 256,
+        524288: 67174656,
+        1572864: 67174404,
+        2621440: 0,
+        3670016: 67109120,
+        4718592: 67108868,
+        5767168: 65536,
+        6815744: 65540,
+        7864320: 260,
+        8912896: 4,
+        9961472: 256,
+        11010048: 67174400,
+        12058624: 65796,
+        13107200: 65792,
+        14155776: 67109124,
+        15204352: 67174660,
+        16252928: 67108864,
+        16777216: 67174656,
+        17825792: 65540,
+        18874368: 65536,
+        19922944: 67109120,
+        20971520: 256,
+        22020096: 67174660,
+        23068672: 67108868,
+        24117248: 0,
+        25165824: 67109124,
+        26214400: 67108864,
+        27262976: 4,
+        28311552: 65792,
+        29360128: 67174400,
+        30408704: 260,
+        31457280: 65796,
+        32505856: 67174404,
+        17301504: 67108864,
+        18350080: 260,
+        19398656: 67174656,
+        20447232: 0,
+        21495808: 65540,
+        22544384: 67109120,
+        23592960: 256,
+        24641536: 67174404,
+        25690112: 65536,
+        26738688: 67174660,
+        27787264: 65796,
+        28835840: 67108868,
+        29884416: 67109124,
+        30932992: 67174400,
+        31981568: 4,
+        33030144: 65792
+      }, {
+        0: 2151682048,
+        65536: 2147487808,
+        131072: 4198464,
+        196608: 2151677952,
+        262144: 0,
+        327680: 4198400,
+        393216: 2147483712,
+        458752: 4194368,
+        524288: 2147483648,
+        589824: 4194304,
+        655360: 64,
+        720896: 2147487744,
+        786432: 2151678016,
+        851968: 4160,
+        917504: 4096,
+        983040: 2151682112,
+        32768: 2147487808,
+        98304: 64,
+        163840: 2151678016,
+        229376: 2147487744,
+        294912: 4198400,
+        360448: 2151682112,
+        425984: 0,
+        491520: 2151677952,
+        557056: 4096,
+        622592: 2151682048,
+        688128: 4194304,
+        753664: 4160,
+        819200: 2147483648,
+        884736: 4194368,
+        950272: 4198464,
+        1015808: 2147483712,
+        1048576: 4194368,
+        1114112: 4198400,
+        1179648: 2147483712,
+        1245184: 0,
+        1310720: 4160,
+        1376256: 2151678016,
+        1441792: 2151682048,
+        1507328: 2147487808,
+        1572864: 2151682112,
+        1638400: 2147483648,
+        1703936: 2151677952,
+        1769472: 4198464,
+        1835008: 2147487744,
+        1900544: 4194304,
+        1966080: 64,
+        2031616: 4096,
+        1081344: 2151677952,
+        1146880: 2151682112,
+        1212416: 0,
+        1277952: 4198400,
+        1343488: 4194368,
+        1409024: 2147483648,
+        1474560: 2147487808,
+        1540096: 64,
+        1605632: 2147483712,
+        1671168: 4096,
+        1736704: 2147487744,
+        1802240: 2151678016,
+        1867776: 4160,
+        1933312: 2151682048,
+        1998848: 4194304,
+        2064384: 4198464
+      }, {
+        0: 128,
+        4096: 17039360,
+        8192: 262144,
+        12288: 536870912,
+        16384: 537133184,
+        20480: 16777344,
+        24576: 553648256,
+        28672: 262272,
+        32768: 16777216,
+        36864: 537133056,
+        40960: 536871040,
+        45056: 553910400,
+        49152: 553910272,
+        53248: 0,
+        57344: 17039488,
+        61440: 553648128,
+        2048: 17039488,
+        6144: 553648256,
+        10240: 128,
+        14336: 17039360,
+        18432: 262144,
+        22528: 537133184,
+        26624: 553910272,
+        30720: 536870912,
+        34816: 537133056,
+        38912: 0,
+        43008: 553910400,
+        47104: 16777344,
+        51200: 536871040,
+        55296: 553648128,
+        59392: 16777216,
+        63488: 262272,
+        65536: 262144,
+        69632: 128,
+        73728: 536870912,
+        77824: 553648256,
+        81920: 16777344,
+        86016: 553910272,
+        90112: 537133184,
+        94208: 16777216,
+        98304: 553910400,
+        102400: 553648128,
+        106496: 17039360,
+        110592: 537133056,
+        114688: 262272,
+        118784: 536871040,
+        122880: 0,
+        126976: 17039488,
+        67584: 553648256,
+        71680: 16777216,
+        75776: 17039360,
+        79872: 537133184,
+        83968: 536870912,
+        88064: 17039488,
+        92160: 128,
+        96256: 553910272,
+        100352: 262272,
+        104448: 553910400,
+        108544: 0,
+        112640: 553648128,
+        116736: 16777344,
+        120832: 262144,
+        124928: 537133056,
+        129024: 536871040
+      }, {
+        0: 268435464,
+        256: 8192,
+        512: 270532608,
+        768: 270540808,
+        1024: 268443648,
+        1280: 2097152,
+        1536: 2097160,
+        1792: 268435456,
+        2048: 0,
+        2304: 268443656,
+        2560: 2105344,
+        2816: 8,
+        3072: 270532616,
+        3328: 2105352,
+        3584: 8200,
+        3840: 270540800,
+        128: 270532608,
+        384: 270540808,
+        640: 8,
+        896: 2097152,
+        1152: 2105352,
+        1408: 268435464,
+        1664: 268443648,
+        1920: 8200,
+        2176: 2097160,
+        2432: 8192,
+        2688: 268443656,
+        2944: 270532616,
+        3200: 0,
+        3456: 270540800,
+        3712: 2105344,
+        3968: 268435456,
+        4096: 268443648,
+        4352: 270532616,
+        4608: 270540808,
+        4864: 8200,
+        5120: 2097152,
+        5376: 268435456,
+        5632: 268435464,
+        5888: 2105344,
+        6144: 2105352,
+        6400: 0,
+        6656: 8,
+        6912: 270532608,
+        7168: 8192,
+        7424: 268443656,
+        7680: 270540800,
+        7936: 2097160,
+        4224: 8,
+        4480: 2105344,
+        4736: 2097152,
+        4992: 268435464,
+        5248: 268443648,
+        5504: 8200,
+        5760: 270540808,
+        6016: 270532608,
+        6272: 270540800,
+        6528: 270532616,
+        6784: 8192,
+        7040: 2105352,
+        7296: 2097160,
+        7552: 0,
+        7808: 268435456,
+        8064: 268443656
+      }, {
+        0: 1048576,
+        16: 33555457,
+        32: 1024,
+        48: 1049601,
+        64: 34604033,
+        80: 0,
+        96: 1,
+        112: 34603009,
+        128: 33555456,
+        144: 1048577,
+        160: 33554433,
+        176: 34604032,
+        192: 34603008,
+        208: 1025,
+        224: 1049600,
+        240: 33554432,
+        8: 34603009,
+        24: 0,
+        40: 33555457,
+        56: 34604032,
+        72: 1048576,
+        88: 33554433,
+        104: 33554432,
+        120: 1025,
+        136: 1049601,
+        152: 33555456,
+        168: 34603008,
+        184: 1048577,
+        200: 1024,
+        216: 34604033,
+        232: 1,
+        248: 1049600,
+        256: 33554432,
+        272: 1048576,
+        288: 33555457,
+        304: 34603009,
+        320: 1048577,
+        336: 33555456,
+        352: 34604032,
+        368: 1049601,
+        384: 1025,
+        400: 34604033,
+        416: 1049600,
+        432: 1,
+        448: 0,
+        464: 34603008,
+        480: 33554433,
+        496: 1024,
+        264: 1049600,
+        280: 33555457,
+        296: 34603009,
+        312: 1,
+        328: 33554432,
+        344: 1048576,
+        360: 1025,
+        376: 34604032,
+        392: 33554433,
+        408: 34603008,
+        424: 0,
+        440: 34604033,
+        456: 1049601,
+        472: 1024,
+        488: 33555456,
+        504: 1048577
+      }, {
+        0: 134219808,
+        1: 131072,
+        2: 134217728,
+        3: 32,
+        4: 131104,
+        5: 134350880,
+        6: 134350848,
+        7: 2048,
+        8: 134348800,
+        9: 134219776,
+        10: 133120,
+        11: 134348832,
+        12: 2080,
+        13: 0,
+        14: 134217760,
+        15: 133152,
+        2147483648: 2048,
+        2147483649: 134350880,
+        2147483650: 134219808,
+        2147483651: 134217728,
+        2147483652: 134348800,
+        2147483653: 133120,
+        2147483654: 133152,
+        2147483655: 32,
+        2147483656: 134217760,
+        2147483657: 2080,
+        2147483658: 131104,
+        2147483659: 134350848,
+        2147483660: 0,
+        2147483661: 134348832,
+        2147483662: 134219776,
+        2147483663: 131072,
+        16: 133152,
+        17: 134350848,
+        18: 32,
+        19: 2048,
+        20: 134219776,
+        21: 134217760,
+        22: 134348832,
+        23: 131072,
+        24: 0,
+        25: 131104,
+        26: 134348800,
+        27: 134219808,
+        28: 134350880,
+        29: 133120,
+        30: 2080,
+        31: 134217728,
+        2147483664: 131072,
+        2147483665: 2048,
+        2147483666: 134348832,
+        2147483667: 133152,
+        2147483668: 32,
+        2147483669: 134348800,
+        2147483670: 134217728,
+        2147483671: 134219808,
+        2147483672: 134350880,
+        2147483673: 134217760,
+        2147483674: 134219776,
+        2147483675: 0,
+        2147483676: 133120,
+        2147483677: 2080,
+        2147483678: 131104,
+        2147483679: 134350848
+      }],
+      h = [4160749569, 528482304, 33030144, 2064384, 129024, 8064, 504, 2147483679],
+      f = n.DES = i.extend({
+        _doReset: function _doReset() {
+          for (var t = this._key.words, e = [], r = 0; r < 56; r++) {
+            var i = o[r] - 1;
+            e[r] = t[i >>> 5] >>> 31 - i % 32 & 1;
+          }
+          for (var n = this._subKeys = [], c = 0; c < 16; c++) {
+            var h = n[c] = [],
+              l = a[c];
+            for (r = 0; r < 24; r++) h[r / 6 | 0] |= e[(s[r] - 1 + l) % 28] << 31 - r % 6, h[4 + (r / 6 | 0)] |= e[28 + (s[r + 24] - 1 + l) % 28] << 31 - r % 6;
+            h[0] = h[0] << 1 | h[0] >>> 31;
+            for (r = 1; r < 7; r++) h[r] = h[r] >>> 4 * (r - 1) + 3;
+            h[7] = h[7] << 5 | h[7] >>> 27;
+          }
+          var f = this._invSubKeys = [];
+          for (r = 0; r < 16; r++) f[r] = n[15 - r];
+        },
+        encryptBlock: function encryptBlock(t, e) {
+          this._doCryptBlock(t, e, this._subKeys);
+        },
+        decryptBlock: function decryptBlock(t, e) {
+          this._doCryptBlock(t, e, this._invSubKeys);
+        },
+        _doCryptBlock: function _doCryptBlock(t, e, r) {
+          this._lBlock = t[e], this._rBlock = t[e + 1], u.call(this, 4, 252645135), u.call(this, 16, 65535), d.call(this, 2, 858993459), d.call(this, 8, 16711935), u.call(this, 1, 1431655765);
+          for (var i = 0; i < 16; i++) {
+            for (var n = r[i], o = this._lBlock, s = this._rBlock, a = 0, l = 0; l < 8; l++) a |= c[l][((s ^ n[l]) & h[l]) >>> 0];
+            this._lBlock = s, this._rBlock = o ^ a;
+          }
+          var f = this._lBlock;
+          this._lBlock = this._rBlock, this._rBlock = f, u.call(this, 1, 1431655765), d.call(this, 8, 16711935), d.call(this, 2, 858993459), u.call(this, 16, 65535), u.call(this, 4, 252645135), t[e] = this._lBlock, t[e + 1] = this._rBlock;
+        },
+        keySize: 2,
+        ivSize: 2,
+        blockSize: 2
+      });
+    function u(t, e) {
+      var r = (this._lBlock >>> t ^ this._rBlock) & e;
+      this._rBlock ^= r, this._lBlock ^= r << t;
+    }
+    function d(t, e) {
+      var r = (this._rBlock >>> t ^ this._lBlock) & e;
+      this._lBlock ^= r, this._rBlock ^= r << t;
+    }
+    t.DES = i._createHelper(f);
+    var p = n.TripleDES = i.extend({
+      _doReset: function _doReset() {
+        var t = this._key.words;
+        this._des1 = f.createEncryptor(r.create(t.slice(0, 2))), this._des2 = f.createEncryptor(r.create(t.slice(2, 4))), this._des3 = f.createEncryptor(r.create(t.slice(4, 6)));
+      },
+      encryptBlock: function encryptBlock(t, e) {
+        this._des1.encryptBlock(t, e), this._des2.decryptBlock(t, e), this._des3.encryptBlock(t, e);
+      },
+      decryptBlock: function decryptBlock(t, e) {
+        this._des3.decryptBlock(t, e), this._des2.encryptBlock(t, e), this._des1.decryptBlock(t, e);
+      },
+      keySize: 6,
+      ivSize: 2,
+      blockSize: 2
+    });
+    t.TripleDES = i._createHelper(p);
+  }(), function () {
+    var t = l,
+      e = t.lib.StreamCipher,
+      r = t.algo,
+      i = r.RC4 = e.extend({
+        _doReset: function _doReset() {
+          for (var t = this._key, e = t.words, r = t.sigBytes, i = this._S = [], n = 0; n < 256; n++) i[n] = n;
+          n = 0;
+          for (var o = 0; n < 256; n++) {
+            var s = n % r,
+              a = e[s >>> 2] >>> 24 - s % 4 * 8 & 255;
+            o = (o + i[n] + a) % 256;
+            var c = i[n];
+            i[n] = i[o], i[o] = c;
+          }
+          this._i = this._j = 0;
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          t[e] ^= n.call(this);
+        },
+        keySize: 8,
+        ivSize: 0
+      });
+    function n() {
+      for (var t = this._S, e = this._i, r = this._j, i = 0, n = 0; n < 4; n++) {
+        r = (r + t[e = (e + 1) % 256]) % 256;
+        var o = t[e];
+        t[e] = t[r], t[r] = o, i |= t[(t[e] + t[r]) % 256] << 24 - 8 * n;
+      }
+      return this._i = e, this._j = r, i;
+    }
+    t.RC4 = e._createHelper(i);
+    var o = r.RC4Drop = i.extend({
+      cfg: i.cfg.extend({
+        drop: 192
+      }),
+      _doReset: function _doReset() {
+        i._doReset.call(this);
+        for (var t = this.cfg.drop; t > 0; t--) n.call(this);
+      }
+    });
+    t.RC4Drop = e._createHelper(o);
+  }(), l.mode.CTRGladman = function () {
+    var t = l.lib.BlockCipherMode.extend();
+    function e(t) {
+      if (255 == (t >> 24 & 255)) {
+        var e = t >> 16 & 255,
+          r = t >> 8 & 255,
+          i = 255 & t;
+        255 === e ? (e = 0, 255 === r ? (r = 0, 255 === i ? i = 0 : ++i) : ++r) : ++e, t = 0, t += e << 16, t += r << 8, t += i;
+      } else t += 1 << 24;
+      return t;
+    }
+    var r = t.Encryptor = t.extend({
+      processBlock: function processBlock(t, r) {
+        var i = this._cipher,
+          n = i.blockSize,
+          o = this._iv,
+          s = this._counter;
+        o && (s = this._counter = o.slice(0), this._iv = void 0), function (t) {
+          0 === (t[0] = e(t[0])) && (t[1] = e(t[1]));
+        }(s);
+        var a = s.slice(0);
+        i.encryptBlock(a, 0);
+        for (var c = 0; c < n; c++) t[r + c] ^= a[c];
+      }
+    });
+    return t.Decryptor = r, t;
+  }(), function () {
+    var t = l,
+      e = t.lib.StreamCipher,
+      r = t.algo,
+      i = [],
+      n = [],
+      o = [],
+      s = r.Rabbit = e.extend({
+        _doReset: function _doReset() {
+          for (var t = this._key.words, e = this.cfg.iv, r = 0; r < 4; r++) t[r] = 16711935 & (t[r] << 8 | t[r] >>> 24) | 4278255360 & (t[r] << 24 | t[r] >>> 8);
+          var i = this._X = [t[0], t[3] << 16 | t[2] >>> 16, t[1], t[0] << 16 | t[3] >>> 16, t[2], t[1] << 16 | t[0] >>> 16, t[3], t[2] << 16 | t[1] >>> 16],
+            n = this._C = [t[2] << 16 | t[2] >>> 16, 4294901760 & t[0] | 65535 & t[1], t[3] << 16 | t[3] >>> 16, 4294901760 & t[1] | 65535 & t[2], t[0] << 16 | t[0] >>> 16, 4294901760 & t[2] | 65535 & t[3], t[1] << 16 | t[1] >>> 16, 4294901760 & t[3] | 65535 & t[0]];
+          this._b = 0;
+          for (r = 0; r < 4; r++) a.call(this);
+          for (r = 0; r < 8; r++) n[r] ^= i[r + 4 & 7];
+          if (e) {
+            var o = e.words,
+              s = o[0],
+              c = o[1],
+              h = 16711935 & (s << 8 | s >>> 24) | 4278255360 & (s << 24 | s >>> 8),
+              l = 16711935 & (c << 8 | c >>> 24) | 4278255360 & (c << 24 | c >>> 8),
+              f = h >>> 16 | 4294901760 & l,
+              u = l << 16 | 65535 & h;
+            n[0] ^= h, n[1] ^= f, n[2] ^= l, n[3] ^= u, n[4] ^= h, n[5] ^= f, n[6] ^= l, n[7] ^= u;
+            for (r = 0; r < 4; r++) a.call(this);
+          }
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          var r = this._X;
+          a.call(this), i[0] = r[0] ^ r[5] >>> 16 ^ r[3] << 16, i[1] = r[2] ^ r[7] >>> 16 ^ r[5] << 16, i[2] = r[4] ^ r[1] >>> 16 ^ r[7] << 16, i[3] = r[6] ^ r[3] >>> 16 ^ r[1] << 16;
+          for (var n = 0; n < 4; n++) i[n] = 16711935 & (i[n] << 8 | i[n] >>> 24) | 4278255360 & (i[n] << 24 | i[n] >>> 8), t[e + n] ^= i[n];
+        },
+        blockSize: 4,
+        ivSize: 2
+      });
+    function a() {
+      for (var t = this._X, e = this._C, r = 0; r < 8; r++) n[r] = e[r];
+      e[0] = e[0] + 1295307597 + this._b | 0, e[1] = e[1] + 3545052371 + (e[0] >>> 0 < n[0] >>> 0 ? 1 : 0) | 0, e[2] = e[2] + 886263092 + (e[1] >>> 0 < n[1] >>> 0 ? 1 : 0) | 0, e[3] = e[3] + 1295307597 + (e[2] >>> 0 < n[2] >>> 0 ? 1 : 0) | 0, e[4] = e[4] + 3545052371 + (e[3] >>> 0 < n[3] >>> 0 ? 1 : 0) | 0, e[5] = e[5] + 886263092 + (e[4] >>> 0 < n[4] >>> 0 ? 1 : 0) | 0, e[6] = e[6] + 1295307597 + (e[5] >>> 0 < n[5] >>> 0 ? 1 : 0) | 0, e[7] = e[7] + 3545052371 + (e[6] >>> 0 < n[6] >>> 0 ? 1 : 0) | 0, this._b = e[7] >>> 0 < n[7] >>> 0 ? 1 : 0;
+      for (r = 0; r < 8; r++) {
+        var i = t[r] + e[r],
+          s = 65535 & i,
+          a = i >>> 16,
+          c = ((s * s >>> 17) + s * a >>> 15) + a * a,
+          h = ((4294901760 & i) * i | 0) + ((65535 & i) * i | 0);
+        o[r] = c ^ h;
+      }
+      t[0] = o[0] + (o[7] << 16 | o[7] >>> 16) + (o[6] << 16 | o[6] >>> 16) | 0, t[1] = o[1] + (o[0] << 8 | o[0] >>> 24) + o[7] | 0, t[2] = o[2] + (o[1] << 16 | o[1] >>> 16) + (o[0] << 16 | o[0] >>> 16) | 0, t[3] = o[3] + (o[2] << 8 | o[2] >>> 24) + o[1] | 0, t[4] = o[4] + (o[3] << 16 | o[3] >>> 16) + (o[2] << 16 | o[2] >>> 16) | 0, t[5] = o[5] + (o[4] << 8 | o[4] >>> 24) + o[3] | 0, t[6] = o[6] + (o[5] << 16 | o[5] >>> 16) + (o[4] << 16 | o[4] >>> 16) | 0, t[7] = o[7] + (o[6] << 8 | o[6] >>> 24) + o[5] | 0;
+    }
+    t.Rabbit = e._createHelper(s);
+  }(), l.mode.CTR = function () {
+    var t = l.lib.BlockCipherMode.extend(),
+      e = t.Encryptor = t.extend({
+        processBlock: function processBlock(t, e) {
+          var r = this._cipher,
+            i = r.blockSize,
+            n = this._iv,
+            o = this._counter;
+          n && (o = this._counter = n.slice(0), this._iv = void 0);
+          var s = o.slice(0);
+          r.encryptBlock(s, 0), o[i - 1] = o[i - 1] + 1 | 0;
+          for (var a = 0; a < i; a++) t[e + a] ^= s[a];
+        }
+      });
+    return t.Decryptor = e, t;
+  }(), function () {
+    var t = l,
+      e = t.lib.StreamCipher,
+      r = t.algo,
+      i = [],
+      n = [],
+      o = [],
+      s = r.RabbitLegacy = e.extend({
+        _doReset: function _doReset() {
+          var t = this._key.words,
+            e = this.cfg.iv,
+            r = this._X = [t[0], t[3] << 16 | t[2] >>> 16, t[1], t[0] << 16 | t[3] >>> 16, t[2], t[1] << 16 | t[0] >>> 16, t[3], t[2] << 16 | t[1] >>> 16],
+            i = this._C = [t[2] << 16 | t[2] >>> 16, 4294901760 & t[0] | 65535 & t[1], t[3] << 16 | t[3] >>> 16, 4294901760 & t[1] | 65535 & t[2], t[0] << 16 | t[0] >>> 16, 4294901760 & t[2] | 65535 & t[3], t[1] << 16 | t[1] >>> 16, 4294901760 & t[3] | 65535 & t[0]];
+          this._b = 0;
+          for (var n = 0; n < 4; n++) a.call(this);
+          for (n = 0; n < 8; n++) i[n] ^= r[n + 4 & 7];
+          if (e) {
+            var o = e.words,
+              s = o[0],
+              c = o[1],
+              h = 16711935 & (s << 8 | s >>> 24) | 4278255360 & (s << 24 | s >>> 8),
+              l = 16711935 & (c << 8 | c >>> 24) | 4278255360 & (c << 24 | c >>> 8),
+              f = h >>> 16 | 4294901760 & l,
+              u = l << 16 | 65535 & h;
+            i[0] ^= h, i[1] ^= f, i[2] ^= l, i[3] ^= u, i[4] ^= h, i[5] ^= f, i[6] ^= l, i[7] ^= u;
+            for (n = 0; n < 4; n++) a.call(this);
+          }
+        },
+        _doProcessBlock: function _doProcessBlock(t, e) {
+          var r = this._X;
+          a.call(this), i[0] = r[0] ^ r[5] >>> 16 ^ r[3] << 16, i[1] = r[2] ^ r[7] >>> 16 ^ r[5] << 16, i[2] = r[4] ^ r[1] >>> 16 ^ r[7] << 16, i[3] = r[6] ^ r[3] >>> 16 ^ r[1] << 16;
+          for (var n = 0; n < 4; n++) i[n] = 16711935 & (i[n] << 8 | i[n] >>> 24) | 4278255360 & (i[n] << 24 | i[n] >>> 8), t[e + n] ^= i[n];
+        },
+        blockSize: 4,
+        ivSize: 2
+      });
+    function a() {
+      for (var t = this._X, e = this._C, r = 0; r < 8; r++) n[r] = e[r];
+      e[0] = e[0] + 1295307597 + this._b | 0, e[1] = e[1] + 3545052371 + (e[0] >>> 0 < n[0] >>> 0 ? 1 : 0) | 0, e[2] = e[2] + 886263092 + (e[1] >>> 0 < n[1] >>> 0 ? 1 : 0) | 0, e[3] = e[3] + 1295307597 + (e[2] >>> 0 < n[2] >>> 0 ? 1 : 0) | 0, e[4] = e[4] + 3545052371 + (e[3] >>> 0 < n[3] >>> 0 ? 1 : 0) | 0, e[5] = e[5] + 886263092 + (e[4] >>> 0 < n[4] >>> 0 ? 1 : 0) | 0, e[6] = e[6] + 1295307597 + (e[5] >>> 0 < n[5] >>> 0 ? 1 : 0) | 0, e[7] = e[7] + 3545052371 + (e[6] >>> 0 < n[6] >>> 0 ? 1 : 0) | 0, this._b = e[7] >>> 0 < n[7] >>> 0 ? 1 : 0;
+      for (r = 0; r < 8; r++) {
+        var i = t[r] + e[r],
+          s = 65535 & i,
+          a = i >>> 16,
+          c = ((s * s >>> 17) + s * a >>> 15) + a * a,
+          h = ((4294901760 & i) * i | 0) + ((65535 & i) * i | 0);
+        o[r] = c ^ h;
+      }
+      t[0] = o[0] + (o[7] << 16 | o[7] >>> 16) + (o[6] << 16 | o[6] >>> 16) | 0, t[1] = o[1] + (o[0] << 8 | o[0] >>> 24) + o[7] | 0, t[2] = o[2] + (o[1] << 16 | o[1] >>> 16) + (o[0] << 16 | o[0] >>> 16) | 0, t[3] = o[3] + (o[2] << 8 | o[2] >>> 24) + o[1] | 0, t[4] = o[4] + (o[3] << 16 | o[3] >>> 16) + (o[2] << 16 | o[2] >>> 16) | 0, t[5] = o[5] + (o[4] << 8 | o[4] >>> 24) + o[3] | 0, t[6] = o[6] + (o[5] << 16 | o[5] >>> 16) + (o[4] << 16 | o[4] >>> 16) | 0, t[7] = o[7] + (o[6] << 8 | o[6] >>> 24) + o[5] | 0;
+    }
+    t.RabbitLegacy = e._createHelper(s);
+  }(), l.pad.ZeroPadding = {
+    pad: function pad(t, e) {
+      var r = 4 * e;
+      t.clamp(), t.sigBytes += r - (t.sigBytes % r || r);
+    },
+    unpad: function unpad(t) {
+      for (var e = t.words, r = t.sigBytes - 1; !(e[r >>> 2] >>> 24 - r % 4 * 8 & 255);) r--;
+      t.sigBytes = r + 1;
+    }
+  }, l;
+});
+
+/***/ }),
+
+/***/ "./src/lib/prototype/Automator.js":
+/*!****************************************!*\
+  !*** ./src/lib/prototype/Automator.js ***!
+  \****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-04-25 20:37:31
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:58:57
+ * @Description: 
+ */
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config;
+var _logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var customLockScreen = files.exists(FileUtils.getCurrentWorkPath() + '/extends/LockScreen.js') ? eval('require')(FileUtils.getCurrentWorkPath() + '/extends/LockScreen.js') : null;
+var hasRootPermission = function hasRootPermission() {
+  return files.exists("/sbin/su") || files.exists("/system/xbin/su") || files.exists("/system/bin/su");
+};
+var _automator = device.sdkInt < 24 || hasRootPermission() ? new Automation_root() : new Automation();
+
+/**
+ * 获取区域内的随机数，并避免获取到边界
+ * @param {*} min 最小值
+ * @param {*} max 最大值
+ * @returns 随机值
+ */
+var randomRange = function randomRange(min, max) {
+  var padding = Math.floor((max - min) / 5);
+  return min + padding + Math.ceil(Math.random() * (max - min - 2 * padding));
+};
+module.exports = {
+  registerVisualHelper: function registerVisualHelper(visualHelper) {
+    _automator.registerVisualHelper(visualHelper);
+  },
+  click: function click(x, y) {
+    _logUtils.debugInfo(['点击了：{}, {}', x, y]);
+    return _automator.click(x, y);
+  },
+  clickCenter: function clickCenter(obj) {
+    return _automator.click(obj.bounds().centerX(), obj.bounds().centerY());
+  },
+  clickRandom: function clickRandom(obj) {
+    var bounds = obj.bounds();
+    var left = bounds.left,
+      top = bounds.top,
+      right = bounds.right,
+      bottom = bounds.bottom;
+    var x = randomRange(left, right);
+    var y = randomRange(top, bottom);
+    _logUtils.debugInfo(['random clicked: [{}, {}]', x, y]);
+    if (_automator.visualHelper) {
+      _automator.visualHelper.addText('↓', {
+        x: x - 8,
+        y: y - 2
+      }, '#e440e1');
+      _automator.visualHelper.addRectangle('', [x, y, 5, 5]);
+    }
+    return _automator.click(x, y);
+  },
+  clickRandomRegion: function clickRandomRegion(region) {
+    if (Object.prototype.toString.call(region) === '[object Array]' && region.length > 3) {
+      region = {
+        left: region[0],
+        top: region[1],
+        width: region[2],
+        height: region[3]
+      };
+    }
+    var _region = region,
+      left = _region.left,
+      top = _region.top,
+      width = _region.width,
+      height = _region.height;
+    var right = left + width,
+      bottom = top + height;
+    if (left < 0 || left > _config.device_width || top < 0 || top > _config.device_height || right < 0 || right > _config.device_width || bottom < 0 || bottom > _config.device_height) {
+      _logUtils.errorInfo(['区域信息不在屏幕内，取消点击：{}', region]);
+      return false;
+    }
+    var x = randomRange(left, left + width);
+    var y = randomRange(top, top + height);
+    _logUtils.debugInfo(['randomRegion clicked: [{}, {}]', x, y]);
+    if (_automator.visualHelper) {
+      _automator.visualHelper.addText('↓', {
+        x: x - 8,
+        y: y - 2
+      }, '#e440e1');
+      _automator.visualHelper.addRectangle('', [x, y, 5, 5]);
+    }
+    return _automator.click(x, y);
+  },
+  swipe: function swipe(x1, y1, x2, y2, duration) {
+    return _automator.swipe(x1, y1, x2, y2, duration);
+  },
+  gesture: function gesture(duration, points) {
+    return _automator.gesture(duration, points);
+  },
+  back: function back() {
+    return _automator.back();
+  },
+  lockScreen: function lockScreen() {
+    _config.notNeedRelock = true;
+    return _automator.lockScreen();
+  },
+  scrollDown: function (_scrollDown) {
+    function scrollDown() {
+      return _scrollDown.apply(this, arguments);
+    }
+    scrollDown.toString = function () {
+      return _scrollDown.toString();
+    };
+    return scrollDown;
+  }(function () {
+    if (_config.useCustomScrollDown) {
+      return _automator.scrollDown();
+    } else {
+      return scrollDown();
+    }
+  }),
+  /**
+   * 页面向下滑动 startY > endY 手势向上
+   * 
+   * @param {*} startY 起始高度
+   * @param {*} endY 结束高度
+   * @param {*} duration 
+   * @returns 
+   */
+  gestureDown: function gestureDown(startY, endY, duration) {
+    return _automator.scrollDown(startY, endY, duration);
+  },
+  /**
+   * 页面向上滑动 startY < endY 手势向下
+   * 
+   * @param {*} startY 起始高度
+   * @param {*} endY 结束高度
+   * @param {*} duration 
+   * @returns 
+   */
+  gestureUp: function gestureUp(startY, endY, duration) {
+    return _automator.scrollUp(startY, endY, duration);
+  },
+  scrollUp: function (_scrollUp) {
+    function scrollUp(_x) {
+      return _scrollUp.apply(this, arguments);
+    }
+    scrollUp.toString = function () {
+      return _scrollUp.toString();
+    };
+    return scrollUp;
+  }(function (speed) {
+    if (_config.useCustomScrollDown) {
+      _automator.scrollUp();
+    } else {
+      scrollUp();
+    }
+  }),
+  scrollUpAndDown: function scrollUpAndDown(speed) {
+    _automator.scrollUpAndDown(speed);
+  },
+  clickBack: function clickBack(forceBack) {
+    return _automator.clickBack(forceBack);
+  },
+  clickClose: function clickClose() {
+    return _automator.clickClose();
+  }
+};
+function CommonAutomation() {
+  this.visualHelper = null;
+  this.registerVisualHelper = function (visualHelper) {
+    this.visualHelper = visualHelper;
+  };
+  this.scrollDown = function (startY, endY, duration) {
+    var deviceHeight = _config.device_height || 1900;
+    var bottomHeight = _config.bottomHeight || 250;
+    var points = [];
+    var startX = parseInt(_config.device_width / 2) + ~~(Math.random() * 100 % 40 + 50) * (Math.random() > 0.5 ? 1 : -1);
+    startY = startY || deviceHeight - bottomHeight;
+    endY = endY || parseInt(deviceHeight / 5);
+    if (startY < endY) {
+      var tmp = endY;
+      endY = startY;
+      startY = tmp;
+    }
+    var distY = startY - endY;
+    var distX = 100;
+    var sum = 0,
+      step = 1;
+    var gaps = [];
+    while (sum < distY) {
+      step *= 1.2;
+      sum += Math.log2(step);
+      gaps.push(Math.log2(step));
+    }
+    var currentY = startY,
+      currentX = startX;
+    var gapX = distX / gaps.length;
+    gaps.reverse().forEach(function (v) {
+      points.push([currentX, currentY]);
+      currentY -= v;
+      currentX += gapX;
+    });
+    this.gesture(duration || points.length * 8, points);
+  };
+  this.scrollUp = function (startY, endY, duration) {
+    var deviceHeight = _config.device_height || 1900;
+    var points = [];
+    var startX = parseInt(_config.device_width / 2) + ~~(Math.random() * 100 % 40 + 50) * (Math.random() > 0.5 ? 1 : -1);
+    startY = startY || deviceHeight / 3;
+    if (startY > endY) {
+      var tmp = endY;
+      endY = startY;
+      startY = tmp;
+    }
+    var distY = endY - startY;
+    var distX = 100;
+    var sum = 0,
+      step = 1;
+    var gaps = [];
+    while (sum < distY) {
+      step *= 1.2;
+      sum += Math.log2(step);
+      gaps.push(Math.log2(step));
+    }
+    var currentY = startY,
+      currentX = startX;
+    var gapX = distX / gaps.length;
+    gaps.reverse().forEach(function (v) {
+      points.push([currentX, currentY]);
+      currentY += v;
+      currentX += gapX;
+    });
+    this.gesture(duration || points.length * 8, points);
+  };
+  this.scrollUpAndDown = function (speed) {
+    var millis = parseInt(speed || _config.scrollDownSpeed || 500);
+    var deviceHeight = _config.device_height || 1900;
+    var bottomHeight = _config.bottomHeight || 250;
+    var x = parseInt(_config.device_width / 2);
+    var startPoint = deviceHeight - bottomHeight;
+    // 滑动距离，二分之一屏幕
+    var distance = parseInt(deviceHeight / 2);
+    var endPoint = startPoint - distance;
+    // 手势上划
+    this.swipe(x, startPoint, x + 100, endPoint, millis);
+    sleep(millis + 20);
+    this.swipe(x, endPoint, x + 100, startPoint, millis);
+  };
+  this.clickBack = function (forceBack) {
+    var hasButton = false;
+    if (descEndsWith('返回').exists()) {
+      descEndsWith('返回').findOne(_config.timeout_findOne).click();
+      hasButton = true;
+    } else if (textEndsWith('返回').exists()) {
+      textEndsWith('返回').findOne(_config.timeout_findOne).click();
+      hasButton = true;
+    } else if (forceBack) {
+      this.back();
+    }
+    if (hasButton) {
+      sleep(200);
+    }
+    return hasButton;
+  };
+  this.clickClose = function () {
+    var hasButton = false;
+    if (descEndsWith('关闭').exists()) {
+      descEndsWith('关闭').findOne(_config.timeout_findOne).click();
+      hasButton = true;
+    } else if (textEndsWith('关闭').exists()) {
+      textEndsWith('关闭').findOne(_config.timeout_findOne).click();
+      hasButton = true;
+    }
+    if (hasButton) {
+      sleep(200);
+    }
+    return hasButton;
+  };
+}
+function Automation_root() {
+  CommonAutomation.call(this);
+  this.check_root = function () {
+    if (!(files.exists("/sbin/su") || files.exists("/system/xbin/su") || files.exists("/system/bin/su"))) throw new Error("未获取ROOT权限");
+  };
+  this.click = function (x, y) {
+    this.check_root();
+    return shell("input tap " + x + " " + y, true).code === 0;
+  };
+  this.swipe = function (x1, y1, x2, y2, duration) {
+    this.check_root();
+    return shell("input swipe " + x1 + " " + y1 + " " + x2 + " " + y2 + " " + duration, true).code === 0;
+  };
+  this.gesture = function (duration, points) {
+    this.check_root();
+    var len = points.length,
+      step = duration / len,
+      start = points.shift();
+
+    // 使用 RootAutomator 模拟手势，仅适用于安卓5.0及以上
+    var ra = new RootAutomator();
+    ra.touchDown(start[0], start[1]);
+    sleep(step);
+    points.forEach(function (el) {
+      ra.touchMove(el[0], el[1]);
+      sleep(step);
+    });
+    ra.touchUp();
+    ra.exit();
+    return true;
+  };
+  this.back = function () {
+    this.check_root();
+    return shell("input keyevent KEYCODE_BACK", true).code === 0;
+  };
+  this.lockScreen = function () {
+    return shell("input keyevent 26", true).code === 0;
+  };
+}
+function Automation() {
+  CommonAutomation.call(this);
+  this.click = function (x, y) {
+    return click(x, y);
+  };
+  this.swipe = function (x1, y1, x2, y2, duration) {
+    return swipe(x1, y1, x2, y2, duration);
+  };
+  this.gesture = function (duration, points) {
+    return gesture(duration, points);
+  };
+  this.back = function () {
+    return back();
+  };
+
+  /**
+   * 首先尝试无障碍方式锁屏，失败后使用 下拉状态栏，点击锁屏按钮 的方式锁屏
+   */
+  this.lockScreen = function () {
+    // 使用无障碍服务进行锁屏
+    if (auto.service.performGlobalAction(8)) {
+      return;
+    }
+    _logUtils.debugInfo('使用无障碍锁屏失败，尝试模拟点击方式');
+    if (customLockScreen) {
+      customLockScreen();
+    } else {
+      // MIUI 12 新控制中心
+      swipe(800, 10, 800, 500, 230);
+      sleep(1000);
+      // 点击锁屏按钮
+      click(parseInt(_config.lock_x), parseInt(_config.lock_y));
+    }
+  };
+}
+
+/***/ }),
+
+/***/ "./src/lib/prototype/CapturePermissionResolver.js":
+/*!********************************************************!*\
+  !*** ./src/lib/prototype/CapturePermissionResolver.js ***!
+  \********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config;
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  debugInfo = _require2.debugInfo,
+  warnInfo = _require2.warnInfo;
+var workpath = FileUtils.getCurrentWorkPath();
+var ResultAdapter = __webpack_require__(/*! result_adapter */ "result_adapter");
+var $resolver = __webpack_require__(/*! @/lib/AutoJSRemoveDexResolver.js */ "./src/lib/AutoJSRemoveDexResolver.js");
+$resolver();
+runtime.loadDex(workpath + '/dex/autojs-common.dex');
+importClass(com.tony.autojs.common.ImagesResolver);
+$resolver();
+function ReRequestScreenCapture() {
+  /**
+   * 释放截图权限
+   */
+  this.releaseImageCapture = function () {
+    _config.has_screen_capture_permission = false;
+    debugInfo('准备释放截图权限');
+    ImagesResolver.releaseImageCapture(runtime);
+    debugInfo('释放截图权限完毕');
+  };
+
+  /**
+   * 清除截图权限状态并手动申请截图权限
+   * 
+   * @returns 
+   */
+  this.requestScreenCaptureManual = function () {
+    ImagesResolver.clearScreenCaptureState(runtime);
+    log('准备重新获取截图权限');
+    var permission = ResultAdapter.wait(ImagesResolver.requestScreenCapture(runtime));
+    debugInfo('重新获取截图权限' + permission);
+    return permission;
+  };
+
+  /**
+   * 清除截图权限状态并自动点击授权截图权限
+   * 
+   * @returns 
+   */
+  this.requestScreenCaptureAuto = function () {
+    ImagesResolver.clearScreenCaptureState(runtime);
+    log('准备重新获取截图权限');
+    var permission = __webpack_require__(/*! ../prototype/RequestScreenCapture */ "./src/lib/prototype/RequestScreenCapture.js")();
+    debugInfo('重新获取截图权限' + permission);
+    return permission;
+  };
+
+  /**
+   * 重新获取截图权限
+   * @returns 成功返回true
+   */
+  this.reRequestScreenCapture = function () {
+    if (_config.request_capture_permission) {
+      return this.requestScreenCaptureAuto();
+    } else {
+      return this.requestScreenCaptureManual();
+    }
+  };
+
+  /**
+   * 释放并重新请求截图权限-手动
+   */
+  this.releaseAndRequestScreenCaptureManual = function () {
+    debugInfo('释放截图权限');
+    ImagesResolver.releaseImageCapture(runtime);
+    sleep(100);
+    log('准备重新获取截图权限');
+    var permission = ResultAdapter.wait(ImagesResolver.requestScreenCapture(runtime));
+    debugInfo('重新获取截图权限' + permission);
+    return permission;
+  };
+
+  /**
+   * 释放截图权限并清除截图权限状态-自动
+   */
+  this.releaseAndRequestScreenCaptureAuto = function () {
+    debugInfo('释放截图权限');
+    ImagesResolver.releaseImageCapture(runtime);
+    debugInfo('释放截图权限完毕');
+    var permission = __webpack_require__(/*! ../prototype/RequestScreenCapture */ "./src/lib/prototype/RequestScreenCapture.js")();
+    debugInfo('重新获取截图权限' + permission);
+    return permission;
+  };
+
+  /**
+   * 释放并重新获取截图权限
+   * @returns 是否请求成功
+   */
+  this.releaseAndRequestScreenCapture = function () {
+    _config.has_screen_capture_permission = false;
+    if (_config.request_capture_permission) {
+      return this.releaseAndRequestScreenCaptureAuto();
+    } else {
+      return this.releaseAndRequestScreenCaptureManual();
+    }
+  };
+}
+module.exports = new ReRequestScreenCapture();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/CommonFunction.js":
+/*!*********************************************!*\
+  !*** ./src/lib/prototype/CommonFunction.js ***!
+  \*********************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:11:27
+ * @Description: 通用工具
+ */
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var CommonFunctions = __webpack_require__(/*! @/lib/BaseCommonFunctions.js */ "./src/lib/BaseCommonFunctions.js");
+// 针对当前项目的公共方法封装，方便不同项目之间直接同步BaseCommonFunction不用再对比内容
+var _ProjectCommonFunctions = files.exists(FileUtils.getCurrentWorkPath() + '/lib/ProjectCommonFunctions.js') ? __webpack_require__(/*! @/lib/ProjectCommonFunctions.js */ "./src/lib/ProjectCommonFunctions.js") : null;
+var customizeFunctions = files.exists(FileUtils.getCurrentWorkPath() + '/extends/CommonFunction.js') ? eval('require')(FileUtils.getCurrentWorkPath() + '/extends/CommonFunction.js') : null;
+var innerFunctions = _ProjectCommonFunctions === null ? new CommonFunctions() : new _ProjectCommonFunctions();
+if (customizeFunctions) {
+  innerFunctions = customizeFunctions(innerFunctions);
+}
+module.exports = innerFunctions;
+
+/***/ }),
+
+/***/ "./src/lib/prototype/CrashCatcher.js":
+/*!*******************************************!*\
+  !*** ./src/lib/prototype/CrashCatcher.js ***!
+  \*******************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-05-27 23:08:29
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-16 20:49:42
+ * @Description: AutoJS崩溃自启
+ */
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  storage_name = _require.storage_name,
+  config = _require.config;
+var lockableStorages = __webpack_require__(/*! @/lib/prototype/LockableStorage */ "./src/lib/prototype/LockableStorage.js");
+var logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var fileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var timers = __webpack_require__(/*! @/lib/prototype/Timers */ "./src/lib/prototype/Timers.js");
+var RUN_STATE_STORAGE = lockableStorages.create(storage_name + '_crash_catch');
+function CrashCatcher() {
+  this.currentSource = engines.myEngine().getSource() + '';
+  this.setOnRunning = function () {
+    logUtils.debugInfo('设置脚本状态为执行中');
+    RUN_STATE_STORAGE.put('running', true);
+    RUN_STATE_STORAGE.put('running_source', this.currentSource);
+  };
+  this.setDone = function () {
+    logUtils.debugInfo('设置脚本状态为执行完毕');
+    RUN_STATE_STORAGE.put('running', false);
+  };
+  this.restartIfCrash = function () {
+    if (!config.auto_restart_when_crashed) {
+      return;
+    }
+    var runningStatus = RUN_STATE_STORAGE.get('running');
+    if (runningStatus === 'true' || runningStatus === true) {
+      var source = RUN_STATE_STORAGE.get('running_source') || fileUtils.getRealMainScriptPath();
+      logUtils.warnInfo('AutoJs可能异常崩溃且已重启，重新执行脚本:' + source);
+      engines.execScriptFile(source, {
+        path: source.substring(0, source.lastIndexOf('/'))
+      });
+    } else {
+      logUtils.debugInfo('AutoJs可能异常崩溃且已重启，但脚本已正常走完流程，不重新执行');
+    }
+  };
+  this.init = function () {
+    if (!config.auto_restart_when_crashed) {
+      return;
+    }
+    var intentTask = {
+      isLocal: true,
+      path: fileUtils.getCurrentWorkPath() + '/handler/CrashCatcher.js',
+      action: getOnStartAction()
+    };
+    var existTask = timers.queryIntentTasks(intentTask);
+    if (!existTask || existTask.length === 0) {
+      logUtils.debugInfo('创建异常终止后的重启任务');
+      threads.start(function () {
+        timers.addIntentTask(intentTask);
+      });
+    } else {
+      logUtils.debugInfo(['异常终止的重启任务已存在: {}', JSON.stringify(existTask)]);
+    }
+  };
+  this.init();
+  function getOnStartAction() {
+    var is_modify = Object.prototype.toString.call(org.autojs.autojsm.timing.TimedTask).match(/Java(Class|Object)/);
+    if (is_modify) {
+      return "org.autojs.autojsm.action.startup";
+    } else {
+      return "org.autojs.autojs.action.startup";
+    }
+  }
+}
+module.exports = new CrashCatcher();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/FileUtils.js":
+/*!****************************************!*\
+  !*** ./src/lib/prototype/FileUtils.js ***!
+  \****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-08-05 14:36:13
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:17:39
+ * @Description: 
+ */
+var printExceptionStack = __webpack_require__(/*! @/lib/PrintExceptionStack.js */ "./src/lib/PrintExceptionStack.js");
+__webpack_require__(/*! @/lib/AutoJSRemoveDexResolver.js */ "./src/lib/AutoJSRemoveDexResolver.js")();
+var dateFormat = __webpack_require__(/*! @/lib/DateUtil.js */ "./src/lib/DateUtil.js");
+runtime.loadDex(getCurrentWorkPath() + '/dex/autojs-common.dex');
+importClass(java.io.File);
+importClass(java.io.RandomAccessFile);
+importClass(java.util.ArrayList);
+try {
+  importClass(com.tony.file.FileReader);
+} catch (e) {
+  console.error('加载失败，强制关闭AutoJS', e);
+  console.error('此异常常常发生在闪退之后，需要强制重启AutoJS');
+  var limit = 3;
+  while (limit > 0) {
+    toastLog('java类加载失败，将在' + limit-- + '秒后关闭AutoJS 请授予自启动权限');
+    sleep(1000);
+  }
+  java.lang.System.exit(0);
+}
+var FILE_READER = new FileReader(runtime);
+function getRealMainScriptPath(parentDirOnly) {
+  var currentPath = files.cwd();
+  if (files.exists(currentPath + '/main.js')) {
+    return currentPath + (parentDirOnly ? '' : '/main.js');
+  }
+  var paths = currentPath.split('/');
+  do {
+    paths = paths.slice(0, paths.length - 1);
+    currentPath = paths.reduce(function (a, b) {
+      return a += '/' + b;
+    });
+  } while (!files.exists(currentPath + '/main.js') && paths.length > 0);
+  if (paths.length > 0) {
+    return currentPath + (parentDirOnly ? '' : '/main.js');
+  }
+}
+
+/**
+ * 获取当前脚本的运行工作路径，main.js所在的文件夹
+ */
+function getCurrentWorkPath() {
+  return getRealMainScriptPath(true);
+}
+
+/**
+ * 按行读取最后N行数据
+ * 
+ * @param {string} fileName 文件路径 支持相对路径
+ * @param {number} num 读取的行数
+ * @param {number} startReadIndex 当前读取偏移量
+ * @param {function} filter (line) => check(line) 过滤内容
+ * @returns { result: 行数据列表, readIndex: 当前读取偏移量, total: 文件总大小, filePath: 文件路径 }
+ */
+var readLastLines = function readLastLines(fileName, num, startReadIndex, filter) {
+  var fileLineMatcher = null;
+  if (filter) {
+    fileLineMatcher = new FileReader.FileFilter({
+      match: function match(v) {
+        return filter(v);
+      }
+    });
+  }
+  var startStamp = new Date().getTime();
+  try {
+    startReadIndex = startReadIndex || -1;
+    num = num || 1000;
+    return FILE_READER.readLastLines(new java.lang.String(fileName), new java.lang.Long(num), new java.lang.Long(startReadIndex), fileLineMatcher);
+  } finally {
+    console.verbose('文件读取耗时：', new Date().getTime() - startStamp, 'ms');
+  }
+};
+
+/**
+ * 按行读取前N行数据
+ * 
+ * @param {string} fileName 文件路径 支持相对路径
+ * @param {number} num 读取的行数
+ * @param {number} startReadIndex 当前读取偏移量
+ * @param {function} filter (line) => check(line) 过滤内容
+ * @returns { result: 行数据列表, readIndex: 当前读取偏移量, total: 文件总大小, filePath: 文件路径 }
+ */
+var readForwardLines = function readForwardLines(fileName, num, startReadIndex, filter) {
+  var fileLineMatcher = null;
+  if (filter) {
+    fileLineMatcher = new FileReader.FileFilter({
+      match: function match(v) {
+        return filter(v);
+      }
+    });
+  }
+  var startStamp = new Date().getTime();
+  try {
+    startReadIndex = startReadIndex || 0;
+    num = num || 1000;
+    return FILE_READER.readForwardLines(new java.lang.String(fileName), new java.lang.Long(num), new java.lang.Long(startReadIndex), fileLineMatcher);
+  } finally {
+    console.verbose('文件读取耗时：', new Date().getTime() - startStamp, 'ms');
+  }
+};
+
+/**
+ * 按行读取最后N行数据
+ * 
+ * @param {string} fileName 文件路径 支持相对路径
+ * @param {number} num 读取的行数
+ * @param {number} startReadIndex 当前读取偏移量
+ * @param {function} filter (line) => check(line) 过滤内容
+ * @returns { result: 行数据列表, readIndex: 当前读取偏移量, total: 文件总大小, filePath: 文件路径 }
+ * @deprecated 太慢了 改用java dex
+ */
+var jsReadLastLines = function jsReadLastLines(fileName, num, startReadIndex, filter) {
+  filter = filter || function (v) {
+    return true;
+  };
+  var startStamp = new Date().getTime();
+  num = num || 1000;
+  var filePath = files.path(fileName);
+  if (!files.exists(filePath)) {
+    console.error('文件不存在：', filePath, fileName);
+    return null;
+  }
+  var rf = null;
+  var result = new ArrayList();
+  try {
+    rf = new RandomAccessFile(filePath, "r");
+    var fileLength = rf.length();
+    var start = rf.getFilePointer(); // 返回此文件中的当前偏移量
+    var readIndex = startReadIndex || start + fileLength - 1;
+    var line;
+    rf.seek(readIndex); // 设置偏移量为文件末尾
+    console.verbose('设置偏移量', readIndex);
+    console.verbose('开始位置', start);
+    var c = -1;
+    var lineCount = 0;
+    while (readIndex > start) {
+      c = rf.read();
+      // console.verbose('read c', c)
+      if (c == 10 || c == 13) {
+        line = rf.readLine();
+        // console.verbose('读取行', line)
+        if (line != null) {
+          line = new java.lang.String(new java.lang.String(line).getBytes("ISO-8859-1"), "UTF-8");
+          if (filter(line + '')) {
+            result.add(line);
+            lineCount++;
+          }
+        }
+        readIndex--;
+      }
+      if (lineCount >= num) {
+        break;
+      }
+      readIndex--;
+      rf.seek(readIndex);
+    }
+    console.verbose('最终长度：', result.size());
+    java.util.Collections.reverse(result);
+    return {
+      result: runtime.bridges.toArray(result),
+      readIndex: readIndex,
+      total: fileLength,
+      filePath: filePath
+    };
+  } catch (e) {
+    printExceptionStack(e);
+    return null;
+  } finally {
+    console.verbose('文件读取耗时：', new Date().getTime() - startStamp, 'ms');
+    try {
+      if (rf != null) rf.close();
+    } catch (e) {
+      printExceptionStack(e);
+    }
+  }
+};
+
+/**
+ * 列出文件夹下的所有文件
+ * 
+ * @param {string} path 文件路径 支持相对路径
+ * @param {function} filter (file) => check(line) 过滤文件 参数为File
+ * @returns { resultList: 文件列表, path: 当前路径 }
+ */
+var listDirs = function listDirs(path, filter) {
+  filter = filter || function () {
+    return true;
+  };
+  var filePath = files.path(path);
+  if (!files.exists(filePath)) {
+    return {
+      path: filePath,
+      resultList: [],
+      error: '文件路径不存在'
+    };
+  }
+  var dir = new File(filePath);
+  if (!dir.isDirectory()) {
+    dir = dir.getParentFile();
+  }
+  var fileArray = dir.listFiles();
+  if (fileArray === null) {
+    return {
+      path: filePath,
+      resultList: [],
+      error: '文件路径无权限'
+    };
+  }
+  var resultList = [];
+  var _loop = function _loop() {
+    var subFile = fileArray[i];
+    if (filter(subFile)) {
+      var fileName = subFile.getName() + '';
+      resultList.push({
+        name: fileName,
+        fullPath: subFile.getAbsolutePath() + '',
+        isDir: subFile.isDirectory(),
+        fileSize: subFile.length(),
+        lastModified: subFile.lastModified(),
+        lastModifiedStr: dateFormat(new Date(subFile.lastModified())),
+        type: function () {
+          if (subFile.isDirectory()) {
+            return 'dir';
+          }
+          var type = fileName.substring(fileName.lastIndexOf('.'));
+          if (type && type.length > 1) {
+            return type.substring(1);
+          }
+          return 'unknown';
+        }()
+      });
+    }
+  };
+  for (var i = 0; i < fileArray.length; i++) {
+    _loop();
+  }
+  return {
+    path: dir.getAbsolutePath() + '',
+    resultList: resultList.sort(function (d1, d2) {
+      // 文件夹类型放在最前面 其他的对比类型和名称
+      if (d1.isDir) {
+        if (!d2.isDir) {
+          return -1;
+        }
+        return d1.name > d2.name ? -1 : 1;
+      }
+      if (d2.isDir) {
+        return 1;
+      }
+      return d1.type > d2.type ? 1 : d1.type === d2.type ? d1.name > d2.name ? 1 : -1 : -1;
+    })
+  };
+};
+module.exports = {
+  getRealMainScriptPath: getRealMainScriptPath,
+  getCurrentWorkPath: getCurrentWorkPath,
+  readLastLines: readLastLines,
+  readForwardLines: readForwardLines,
+  jsReadLastLines: jsReadLastLines,
+  listDirs: listDirs
+};
+
+/***/ }),
+
+/***/ "./src/lib/prototype/FloatyUtil.js":
+/*!*****************************************!*\
+  !*** ./src/lib/prototype/FloatyUtil.js ***!
+  \*****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-12-02 19:05:01
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:17:52
+ * @Description: 悬浮窗工具，单独提出来作为单例使用
+ */
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config;
+var _debugInfo = typeof debugInfo === 'undefined' ? function (v) {
+  return console.verbose(v);
+} : debugInfo;
+var _errorInfo = typeof errorInfo === 'undefined' ? function (v) {
+  return console.error(v);
+} : errorInfo;
+var FloatyUtil = function FloatyUtil() {
+  this.floatyWindow = null;
+  this.floatyInitStatus = false;
+  this.floatyLock = null;
+  this.floatyCondition = null;
+  this.showLog = false;
+  this.oldPosition = null;
+  this.debugInfo = function (content) {
+    this.showLog && _debugInfo(content);
+  };
+};
+FloatyUtil.prototype.init = function () {
+  if (this.floatyInitStatus) {
+    return true;
+  }
+  this.floatyLock = threads.lock();
+  this.floatyCondition = this.floatyLock.newCondition();
+  var _this = this;
+  threads.start(function () {
+    // 延迟初始化，避免死机
+    sleep(400);
+    _this.floatyLock.lock();
+    try {
+      if (_this.floatyInitStatus) {
+        return true;
+      }
+      _this.floatyWindow = floaty.rawWindow("\n        <frame gravity=\"left\">\n          <text id=\"content\" textSize=\"8dp\" textColor=\"#00ff00\" />\n        </frame>\n      ");
+      ui.run(function () {
+        _this.floatyWindow.setTouchable(false);
+        _this.floatyWindow.setPosition(50, 50 + _config.bang_offset);
+        _this.floatyWindow.content.text('悬浮窗初始化成功');
+      });
+      _this.floatyInitStatus = true;
+    } catch (e) {
+      _errorInfo('悬浮窗初始化失败' + e);
+      _this.floatyWindow = null;
+      _this.floatyInitStatus = false;
+    } finally {
+      _this.floatyCondition.signalAll();
+      _this.floatyLock.unlock();
+    }
+  });
+  this.floatyLock.lock();
+  try {
+    if (this.floatyInitStatus === false) {
+      this.debugInfo('等待悬浮窗初始化');
+      this.floatyCondition["await"]();
+    }
+  } finally {
+    this.floatyLock.unlock();
+  }
+  this.debugInfo('悬浮窗初始化' + (this.floatyInitStatus ? '成功' : '失败'));
+  return this.floatyInitStatus;
+};
+FloatyUtil.prototype.close = function () {
+  if (this.floatyInitStatus) {
+    this.floatyLock.lock();
+    try {
+      if (this.floatyWindow !== null) {
+        this.floatyWindow.close();
+        this.floatyWindow = null;
+      }
+      this.floatyInitStatus = false;
+    } finally {
+      this.floatyLock.unlock();
+    }
+  }
+};
+FloatyUtil.prototype.setFloatyInfo = function (position, text, option) {
+  option = option || {};
+  if (this.floatyWindow === null) {
+    this.init();
+  }
+  var _this = this;
+  ui.run(function () {
+    _this.floatyLock.lock();
+    try {
+      if (position && isFinite(position.x) && isFinite(position.y)) {
+        _this.floatyWindow.setPosition(parseInt(position.x), parseInt(position.y) + _config.bang_offset);
+      }
+      if (text) {
+        _this.floatyWindow.content.text(text);
+        _this.debugInfo(text);
+      }
+      if (option.textSize) {
+        _this.floatyWindow.content.setTextSize(option.textSize);
+      }
+      if (typeof option.touchable !== 'undefined') {
+        _this.floatyWindow.setTouchable(option.touchable);
+      }
+    } finally {
+      _this.floatyLock.unlock();
+    }
+  });
+};
+FloatyUtil.prototype.setFloatyTextColor = function (colorStr) {
+  if (this.floatyWindow === null) {
+    this.init();
+  }
+  var _this = this;
+  if (/^#[\dabcdef]{6,8}$/i.test(colorStr)) {
+    var colorInt = colors.parseColor(colorStr);
+    if (colorInt !== null) {
+      ui.run(function () {
+        _this.floatyLock.lock();
+        try {
+          _this.floatyWindow.content.setTextColor(colorInt);
+        } finally {
+          _this.floatyLock.unlock();
+        }
+      });
+    }
+  } else {
+    console.error('颜色值字符串格式不正确: ' + colorStr);
+  }
+};
+FloatyUtil.prototype.setFloatyText = function (text, option) {
+  this.setFloatyInfo(null, text, option);
+};
+FloatyUtil.prototype.setFloatyPosition = function (x, y, option) {
+  this.setFloatyInfo({
+    x: x,
+    y: y
+  }, null, option);
+};
+FloatyUtil.prototype.setTextSize = function (textSize) {
+  this.setFloatyInfo(null, null, {
+    textSize: textSize
+  });
+};
+FloatyUtil.prototype.setTouchable = function (touchable) {
+  this.setFloatyInfo(null, null, {
+    touchable: touchable
+  });
+};
+FloatyUtil.prototype.disableLog = function () {
+  this.showLog = false;
+};
+FloatyUtil.prototype.enableLog = function () {
+  this.showLog = true;
+};
+FloatyUtil.prototype.createNewInstance = function () {
+  var newInstance = new FloatyUtil();
+  while (!newInstance.init()) {
+    newInstance = new FloatyUtil();
+  }
+  newInstance.setFloatyPosition(-100, -100);
+  return newInstance;
+};
+FloatyUtil.prototype.hide = function () {
+  this.oldPosition = {
+    x: this.floatyWindow.getX(),
+    y: this.floatyWindow.getY()
+  };
+  this.setFloatyPosition(-100, -100);
+};
+FloatyUtil.prototype.restore = function () {
+  if (this.oldPosition) {
+    this.setFloatyPosition(this.oldPosition.x, this.oldPosition.y);
+  }
+};
+module.exports = new FloatyUtil();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/LockableStorage.js":
+/*!**********************************************!*\
+  !*** ./src/lib/prototype/LockableStorage.js ***!
+  \**********************************************/
+/***/ ((module) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-04-23 23:13:31
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2020-04-25 15:01:49
+ * @Description: 
+ */
+importClass(android.content.Context);
+importClass(android.content.SharedPreferences);
+var lockableStorages = {
+  requireCount: 0
+};
+lockableStorages.create = function (name) {
+  return new LockableStorage(name);
+};
+lockableStorages.remove = function (name) {
+  return this.create(name).clear();
+};
+module.exports = lockableStorages;
+
+// 支持锁的同步操作storage
+function LockableStorage(name) {
+  this.NAME_PREFIX = "autojs.localstorage.sync.";
+  this.mSharedPreferences = context.getSharedPreferences(this.NAME_PREFIX + name, Context.MODE_PRIVATE);
+  this.put = function (key, stringValue) {
+    return this.mSharedPreferences.edit().putString(key, stringValue).commit();
+  };
+  this.get = function (key, defaultValue) {
+    defaultValue = defaultValue || null;
+    return this.mSharedPreferences.getString(key, defaultValue);
+  };
+  this.clear = function () {
+    return this.mSharedPreferences.edit().clear().commit();
+  };
+}
+
+/***/ }),
+
+/***/ "./src/lib/prototype/LogUtils.js":
+/*!***************************************!*\
+  !*** ./src/lib/prototype/LogUtils.js ***!
+  \***************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:41:16
+ * @Description: 日志工具
+ */
+importClass(java.lang.Thread);
+importClass(java.util.concurrent.LinkedBlockingQueue);
+importClass(java.util.concurrent.ThreadPoolExecutor);
+importClass(java.util.concurrent.TimeUnit);
+importClass(java.util.concurrent.ThreadFactory);
+importClass(java.util.concurrent.Executors);
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config,
+  _storage_name = _require.storage_name;
+var formatDate = __webpack_require__(/*! @/lib/DateUtil.js */ "./src/lib/DateUtil.js");
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var MAIN_PATH = FileUtils.getRealMainScriptPath(true);
+_config.isRunning = true;
+// -------------初始化-------------
+// 确保目录存在
+files.ensureDir(MAIN_PATH + '/logs/');
+files.ensureDir(MAIN_PATH + '/logs/logback/');
+var LOG_TYPES = {
+  VERBOSE: 'VERBOSE',
+  DEBUG: 'DEBUG',
+  LOG: 'LOG',
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ERROR: 'ERROR',
+  DEVELOP: 'DEVELOP'
+};
+var PATH_CONFIG = {
+  'VERBOSE': MAIN_PATH + '/logs/log-verboses.log',
+  'LOG': MAIN_PATH + '/logs/log.log',
+  'INFO': MAIN_PATH + '/logs/info.log',
+  'WARN': MAIN_PATH + '/logs/warn.log',
+  'ERROR': MAIN_PATH + '/logs/error.log',
+  'DEVELOP': MAIN_PATH + '/logs/develop.log'
+};
+var ENGINE_ID = engines.myEngine().id;
+// 移除过期的日志
+var logbackDirPath = MAIN_PATH + '/logs/logback';
+removeOutdateBacklogFiles();
+// -------------初始化结束-------------
+
+/**
+ * Logger 日志基类
+ */
+function Logger() {
+  var _this = this;
+  this.fileWriteCostCounter = 0;
+  this.backupCostCounter = 0;
+  this.enqueueCostCounter = 0;
+
+  /**
+   * 刷新日志缓冲区，仅异步日志用到
+   * 切换读写缓冲区，将缓冲区中的日志全部写入到日志文件
+   */
+  this.flushAllLogs = function () {};
+  /**
+   * 异步日志：将日志内容写入写缓冲区
+   * 同步日志：将日志内容写入日志文件中
+   * @param {*} logData 日志内容对象：包含logType,dataTime,content,threadId等信息
+   */
+  this.enqueueLog = function (logData) {};
+  this.showCostingInfo = function () {
+    console.verbose(ENGINE_ID + ' 日志入队总耗时：' + _this.enqueueCostCounter + 'ms 写入文件总耗时：' + _this.fileWriteCostCounter + 'ms 备份日志文件总耗时：' + _this.backupCostCounter + 'ms');
+  };
+}
+
+/**
+ * 异步日志
+ */
+function AsyncLogger() {
+  Logger.call(this);
+  this.executeThreadPool = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, new LinkedBlockingQueue(10), new ThreadFactory({
+    newThread: function newThread(runnable) {
+      var thread = Executors.defaultThreadFactory().newThread(runnable);
+      thread.setName(_config.thread_name_prefix + ENGINE_ID + '-logging-' + thread.getName());
+      return thread;
+    }
+  }));
+  this.writingList = [];
+  this.readingList = [];
+  this.MAX_QUEUE_SIZE = 256;
+  this.writingLock = threads.lock();
+  this.queueChangeLock = threads.lock();
+  this.queueChangeCondition = this.queueChangeLock.newCondition();
+  var self = this;
+  // 将日志写入文件
+  this.executeThreadPool.execute(function () {
+    var loggerRunning = true;
+    var _loop = function _loop() {
+      var start = new Date().getTime();
+      self.queueChangeLock.lock();
+      try {
+        while (self.readingList.length === 0 && _config.isRunning) {
+          if (_config.develop_mode) {
+            console.verbose(ENGINE_ID + ' 等待日志刷新');
+          }
+          if (!self.queueChangeCondition["await"](5, java.util.concurrent.TimeUnit.SECONDS)) {
+            var currentEngine = engines.all().filter(function (engine) {
+              return engine.id === ENGINE_ID;
+            });
+            _config.isRunning = currentEngine && currentEngine.length > 0;
+          }
+        }
+        if (self.readingList.length === 0) {
+          // console.warn(ENGINE_ID + ' 脚本可能已终止执行')
+          if (self.writingList.length !== 0) {
+            // 切换缓冲区，将缓冲区内容全部写入日志
+            if (_config.show_debug_log) {
+              console.verbose(ENGINE_ID + ' 切换缓冲区，将缓冲区内容全部写入日志');
+            }
+            self.readingList = self.writingList;
+            self.writingList = [];
+          } else {
+            loggerRunning = false;
+            // 双队列为空 直接退出
+            return 1; // break
+          }
+        }
+        start = new Date().getTime();
+        var writerHolder = {};
+        for (var key in PATH_CONFIG) {
+          writerHolder[key] = files.open(PATH_CONFIG[key], 'a');
+        }
+        self.readingList.forEach(function (logData) {
+          var logType = logData.logType,
+            content = logData.content,
+            dateTime = logData.dateTime,
+            threadId = logData.threadId;
+          var logWriter = writerHolder[logType];
+          if (logWriter) {
+            logWriter.writeline(dateTime + ' ' + content);
+          }
+          writerHolder[LOG_TYPES.VERBOSE].writeline(dateTime + ' ' + logType + ' [E:' + ENGINE_ID + ' T:' + threadId + '] - ' + content);
+        });
+        for (var _key in PATH_CONFIG) {
+          var writer = writerHolder[_key];
+          if (writer) {
+            writer.flush();
+            writer.close();
+          }
+        }
+      } catch (e) {
+        console.error(ENGINE_ID + ' 写入日志异常：' + e);
+      } finally {
+        if (loggerRunning) {
+          var cost = new Date().getTime() - start;
+          self.fileWriteCostCounter += cost;
+          start = new Date().getTime();
+          checkFileSizeAndBackup();
+          self.backupCostCounter += new Date().getTime() - start;
+          console.verbose(ENGINE_ID + ' 写入日志到文件耗时：' + cost + 'ms');
+        }
+        // 置空
+        self.readingList = [];
+        self.queueChangeLock.unlock();
+      }
+    };
+    while ( true && _config.save_log_file && (_config.isRunning || self.readingList.length !== 0 || self.writingList.length !== 0)) {
+      if (_loop()) break;
+    }
+    console.warn(ENGINE_ID + ' 脚本执行结束，日志文件写入线程关闭');
+    self.showCostingInfo();
+    // 新建线程 关闭线程池
+    var thread = new Thread(new java.lang.Runnable({
+      run: function run() {
+        try {
+          self.executeThreadPool.shutdown();
+          var flag = self.executeThreadPool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+          if (_config.show_debug_log) {
+            console.verbose(ENGINE_ID + ' 日志线程池关闭：' + flag);
+          }
+        } catch (e) {
+          console.error(ENGINE_ID + ' 关闭日志线程池异常:' + e);
+        } finally {
+          self.executeThreadPool = null;
+        }
+      }
+    }));
+    thread.setName(_config.thread_name_prefix + ENGINE_ID + '_shutdown_logging_thread');
+    thread.start();
+  });
+  this.flushAllLogs = function () {
+    if (_config.save_log_file) {
+      this.queueChangeLock.lock();
+      try {
+        this.readingList = this.writingList;
+        this.writingList = [];
+        this.queueChangeCondition.signal();
+      } finally {
+        this.queueChangeLock.unlock();
+      }
+    }
+  };
+  this.enqueueLog = function (logData) {
+    if (_config.save_log_file) {
+      var enqueueStart = new Date().getTime();
+      // 异步方式 将日志内容入队列
+      this.writingLock.lock();
+      try {
+        this.writingList.push(logData);
+        if (this.writingList.length >= this.MAX_QUEUE_SIZE) {
+          this.queueChangeLock.lock();
+          try {
+            this.readingList = this.writingList;
+            this.writingList = [];
+            this.queueChangeCondition.signal();
+          } finally {
+            this.queueChangeLock.unlock();
+          }
+        }
+      } finally {
+        this.enqueueCostCounter += new Date().getTime() - enqueueStart;
+        this.writingLock.unlock();
+      }
+    }
+  };
+}
+
+/**
+ * 同步日志
+ */
+function SyncLogger() {
+  Logger.call(this);
+  this.storage = storages.create(_storage_name + 'run_log_file');
+  this.enqueueLog = function (logData) {
+    if (_config.save_log_file) {
+      var enqueueStart = new Date().getTime();
+      // 同步方式写入文件
+      var logType = logData.logType,
+        content = logData.content,
+        dateTime = logData.dateTime,
+        threadId = logData.threadId;
+      content += '\n';
+      var verboseLog = dateTime + ' ' + logType + ' [E:' + ENGINE_ID + ' T:' + threadId + '] - ' + content;
+      var log = dateTime + ' ' + content;
+      var start = new Date().getTime();
+      if (PATH_CONFIG[logType]) {
+        files.append(PATH_CONFIG[logType], log);
+      }
+      files.append(PATH_CONFIG[LOG_TYPES.VERBOSE], verboseLog);
+      this.fileWriteCostCounter += new Date().getTime() - start;
+      var target = 'checkFileSizeAndBackup';
+      var clearFlag = this.storage.get(target);
+      if (!clearFlag || parseInt(clearFlag) < new Date().getTime()) {
+        // 十秒钟进行一次
+        clearFlag = new Date().getTime() + 10000;
+        this.storage.put(target, clearFlag);
+        start = new Date().getTime();
+        checkFileSizeAndBackup();
+        this.backupCostCounter += new Date().getTime() - start;
+      }
+      this.enqueueCostCounter += new Date().getTime() - enqueueStart;
+    }
+  };
+}
+AsyncLogger.prototype = Object.create(Logger.prototype);
+AsyncLogger.prototype.constructor = AsyncLogger;
+SyncLogger.prototype = Object.create(Logger.prototype);
+SyncLogger.prototype.constructor = SyncLogger;
+var LOGGER = _config.async_save_log_file ? new AsyncLogger() : new SyncLogger();
+if (_config.show_debug_log) {
+  if (_config.async_save_log_file) {
+    console.verbose(ENGINE_ID + ' 使用异步日志');
+  } else {
+    console.verbose(ENGINE_ID + ' 使用同步日志');
+  }
+}
+/**
+ * @param {string} content 
+ * @param {function} logFunc 执行控制台日志打印的方法
+ * @param {boolean} isToast 
+ * @param {string} logType 日志类型
+ */
+var showToast = function showToast(content, logFunc, isToast, logType) {
+  content = convertObjectContent(content);
+  if (isToast) {
+    toast(content);
+  }
+  var logData = {
+    logType: logType,
+    content: content,
+    dateTime: formatDate(new Date(), 'yyyy-MM-dd HH:mm:ss.S'),
+    threadId: Thread.currentThread().getId()
+  };
+  if (_config.show_engine_id) {
+    content = '[E:' + ENGINE_ID + ' T:' + logData.threadId + '] - ' + content;
+  }
+  logFunc(content);
+  LOGGER.enqueueLog(logData);
+};
+
+/**
+ * 移除过期的日志 默认清除三天前的
+ */
+function removeOutdateBacklogFiles() {
+  if (files.exists(logbackDirPath)) {
+    doRemoveTargetTypeLogFiles('log-verbose');
+    doRemoveTargetTypeLogFiles('log');
+    doRemoveTargetTypeLogFiles('info');
+    doRemoveTargetTypeLogFiles('warn');
+    doRemoveTargetTypeLogFiles('error');
+    doRemoveTargetTypeLogFiles('develop');
+  }
+}
+function getTargetTypeOutdateFiles(logType) {
+  var saveDays = _config.log_saved_days || 3;
+  var threeDayAgo = formatDate(new Date(new Date().getTime() - saveDays * 24 * 3600000), 'yyyyMMddHHmm');
+  var timeRegex = /.*(\d{12})\.log/;
+  return files.listDir(logbackDirPath, function (fileName) {
+    if (!fileName.startsWith(logType)) {
+      return false;
+    }
+    var checkResult = timeRegex.exec(fileName);
+    if (checkResult) {
+      var timestr = checkResult[1];
+      return timestr < threeDayAgo;
+    } else {
+      return true;
+    }
+  });
+}
+function doRemoveTargetTypeLogFiles(logType) {
+  var outdateLogs = getTargetTypeOutdateFiles(logType);
+  // 至少保留三个
+  if (outdateLogs && outdateLogs.length > 3) {
+    outdateLogs.forEach(function (logFile, idx) {
+      if (idx < 3) {
+        return;
+      }
+      if (_config.show_debug_log) {
+        console.verbose(ENGINE_ID + ' 日志文件过期，删除掉：' + logFile);
+      }
+      files.remove(logbackDirPath + '/' + logFile);
+    });
+  }
+}
+/**
+ * 清除日志到备份文件夹，当不传递日志类型时清除所有日志
+ * @param {string} target 日志类型
+ */
+function innerClearLogFile(target) {
+  var path = PATH_CONFIG[target];
+  if (!target) {
+    // 全部清除
+    for (var k in PATH_CONFIG) {
+      clearTarget(PATH_CONFIG[k]);
+    }
+  } else if (path) {
+    clearTarget(path);
+  }
+}
+
+/**
+ * 根据日志路径备份，并清空内容
+ * @param {string} originLogPath 目标日志全路径
+ */
+var clearTarget = function clearTarget(originLogPath) {
+  var nameRegex = /.*\/([-\w]+)\.log$/;
+  if (nameRegex.test(originLogPath)) {
+    fileName = nameRegex.exec(originLogPath)[1];
+    if (files.exists(originLogPath)) {
+      var timestampLastHour = new Date().getTime();
+      var backLogPath = MAIN_PATH + '/logs/logback/' + fileName + '.' + formatDate(new Date(timestampLastHour), 'yyyyMMddHHmm') + '.log';
+      console.info(ENGINE_ID + ' 备份日志文件[' + backLogPath + ']' + (files.move(originLogPath, backLogPath) ? '成功' : '失败'));
+    } else {
+      console.info(ENGINE_ID + ' ' + originLogPath + '不存在，不执行备份');
+    }
+    try {
+      files.write(originLogPath, fileName + ' logs for [' + formatDate(new Date()) + ']\n');
+    } catch (e) {
+      console.error(ENGINE_ID + ' 初始化写入日志文件失败' + e);
+    }
+  } else {
+    console.error(ENGINE_ID + ' 解析文件名失败：' + originLogPath);
+  }
+};
+
+/**
+ * 校验文件大小并执行备份
+ */
+function checkFileSizeAndBackup() {
+  var start = new Date();
+  var hadBackup = false;
+  for (var key in PATH_CONFIG) {
+    if (key === LOG_TYPES.DEVELOP) {
+      // 开发用的develop日志不做备份
+      continue;
+    }
+    var filePath = PATH_CONFIG[key];
+    var length = new java.io.File(filePath).length();
+    if (files.exists(filePath) && length > 1024 * (_config.back_size || 100)) {
+      hadBackup = true;
+      if (_config.show_debug_log) {
+        console.verbose(ENGINE_ID + ' ' + key + '文件大小：' + length + ' 大于' + (_config.back_size || 100) + 'kb，执行备份');
+      }
+      innerClearLogFile(key);
+    }
+  }
+  if (hadBackup && _config.show_debug_log) {
+    console.verbose(ENGINE_ID + ' 备份文件耗时：' + (new Date().getTime() - start) + 'ms');
+  }
+}
+
+/**
+ * 格式化输入参数 eg. `['args: {} {} {}', 'arg1', 'arg2', 'arg3']` => `'args: arg1 arg2 arg3'`
+ * @param {array} originContent 输入参数
+ */
+function convertObjectContent(originContent) {
+  if (typeof originContent === 'string') {
+    return originContent;
+  } else if (Array.isArray(originContent)) {
+    var marker = originContent[0];
+    var args = originContent.slice(1);
+    if (Array.isArray(args) && args.length > 0) {
+      args = args.map(function (r) {
+        if (typeof r === 'function') {
+          return r();
+        } else {
+          return r;
+        }
+      });
+    }
+    var regex = /(\{\})/g;
+    var matchResult = marker.match(regex);
+    if (matchResult && args && matchResult.length > 0 && matchResult.length === args.length) {
+      args.forEach(function (item, idx) {
+        marker = marker.replace('{}', item);
+      });
+      return marker;
+    } else if (matchResult === null) {
+      return marker;
+    }
+  }
+  console.error(ENGINE_ID + ' 参数不匹配[' + JSON.stringify(originContent) + ']');
+  return originContent;
+}
+module.exports = {
+  debugInfo: function debugInfo(content, isToast) {
+    isToast = isToast && _config.show_debug_log;
+    if (_config.show_debug_log || _config.save_log_file) {
+      showToast(content, _config.show_debug_log ? function (c) {
+        return console.verbose(c);
+      } : function () {}, isToast, LOG_TYPES.DEBUG);
+    }
+  },
+  debugForDev: function debugForDev(content, isToast, fileOnly) {
+    if (_config.develop_mode) {
+      if (Array.isArray(content) && content.length > 0) {
+        content = content.map(function (r) {
+          if (typeof r === 'function') {
+            return r();
+          } else {
+            return r;
+          }
+        });
+      }
+      showToast(content, function (c) {
+        if (!fileOnly) {
+          console.verbose(c);
+        }
+      }, isToast, LOG_TYPES.DEVELOP);
+    }
+  },
+  logInfo: function logInfo(content, isToast) {
+    showToast(content, function (c) {
+      return console.log(c);
+    }, isToast, LOG_TYPES.LOG);
+  },
+  infoLog: function infoLog(content, isToast) {
+    showToast(content, function (c) {
+      return console.info(c);
+    }, isToast, LOG_TYPES.INFO);
+  },
+  warnInfo: function warnInfo(content, isToast) {
+    showToast(content, function (c) {
+      return console.warn(c);
+    }, isToast, LOG_TYPES.WARN);
+  },
+  errorInfo: function errorInfo(content, isToast) {
+    showToast(content, function (c) {
+      return console.error(c);
+    }, isToast, LOG_TYPES.ERROR);
+  },
+  appendLog: function appendLog(content) {
+    showToast(content, function () {}, false, LOG_TYPES.DEBUG);
+  },
+  developSaving: function developSaving(content, fileName) {
+    if (_config.develop_saving_mode) {
+      content = convertObjectContent(content);
+      content = formatDate(new Date()) + ' ' + content;
+      console.verbose(content);
+      files.append(MAIN_PATH + '/logs/' + fileName + '.log', content);
+    }
+  },
+  clearLogFile: innerClearLogFile,
+  removeOldLogFiles: removeOutdateBacklogFiles,
+  flushAllLogs: function flushAllLogs() {
+    LOGGER.flushAllLogs();
+  },
+  showCostingInfo: function showCostingInfo() {
+    LOGGER.showCostingInfo();
+  }
+};
+
+/***/ }),
+
+/***/ "./src/lib/prototype/MyEngines.js":
+/*!****************************************!*\
+  !*** ./src/lib/prototype/MyEngines.js ***!
+  \****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _config = _require.config;
+function MyEngines() {
+  var engineFuncs = Object.getOwnPropertyNames(engines);
+  // 复制所有的内置方法
+  for (var idx in engineFuncs) {
+    var func_name = engineFuncs[idx];
+    this[func_name] = engines[func_name];
+  }
+
+  /**
+   * 在新的界面中运行ui脚本
+   *
+   * @param {string} path 
+   * @param {obj} config 
+   * @returns 
+   */
+  this.execUiScriptFile = function (path, config) {
+    return runtime.engines.execScriptFile(path, fillConfig(config));
+  };
+}
+function fillConfig(c) {
+  var config = new com.stardust.autojs.execution.ExecutionConfig();
+  c = c || {};
+  c.path = c.path || files.cwd();
+  if (c.path) {
+    config.workingDirectory = c.path;
+  }
+  config.delay = c.delay || 0;
+  config.interval = c.interval || 0;
+  config.loopTimes = c.loopTimes === undefined ? 1 : c.loopTimes;
+  // 增加配置 intentFlag
+  config.intentFlags = Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
+  if (c.arguments) {
+    var args = c.arguments;
+    for (var key in args) {
+      if (args.hasOwnProperty(key)) {
+        config.setArgument(key, args[key]);
+      }
+    }
+  }
+  return config;
+}
+module.exports = new MyEngines();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/ProcessShare.js":
+/*!*******************************************!*\
+  !*** ./src/lib/prototype/ProcessShare.js ***!
+  \*******************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _storage_name = _require.storage_name;
+var FileUtils = __webpack_require__(/*! @/lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  debugInfo = _require2.debugInfo,
+  warnInfo = _require2.warnInfo;
+var workpath = FileUtils.getCurrentWorkPath();
+var cachePath = context.getCacheDir() + '/' + _storage_name;
+var $resolver = __webpack_require__(/*! @/lib/AutoJSRemoveDexResolver.js */ "./src/lib/AutoJSRemoveDexResolver.js");
+$resolver();
+runtime.loadDex(workpath + '/dex/autojs-common.dex');
+importClass(com.tony.autojs.common.ProcessMappedShare);
+$resolver();
+/**
+ * 进程间通讯工具 实现脚本建通信功能
+ */
+function ProcessShare() {
+  // 缓冲区大小
+  this.bufferSize = 1024;
+  // 是否循环订阅消息
+  this.isLoop = false;
+  // 监听文件的间隔时间 默认1000ms
+  this.interval = 1000;
+  this.setBufferSize = function (size) {
+    this.bufferSize = size;
+    return this;
+  };
+  this.loop = function () {
+    this.isLoop = true;
+    return this;
+  };
+  this.setInterval = function (interval) {
+    this.interval = interval || 1000;
+    return this;
+  };
+
+  /**
+   * 订阅文件消息 收到消息后回调
+   * 
+   * @param {function} resolve 读取消息后的回调
+   * @param {number} timeout  订阅超时时间，超时后自动停止线程 默认60秒 循环订阅模式下无效
+   * @param {string} filePath 消息文件路径 默认为当前AutoJS缓存文件夹下的.share 可以传递绝对路径 但是请自行确保路径可用
+   */
+  this.subscribe = function (resolve, timeout, filePath) {
+    timeout = timeout || 60;
+    filePath = getRealFilePath(filePath);
+    debugInfo(['订阅文件消息：{}', filePath]);
+    var subscriber = ProcessMappedShare.newSubscriber(filePath, this.bufferSize, runtime).setLoop(this.isLoop).setInterval(this.interval).timeout(timeout);
+    subscriber.subscribe(new ProcessMappedShare.Callback({
+      call: function call(str) {
+        debugInfo(['从文件:{} 中 读取消息:{}', filePath, str]);
+        resolve(str);
+      }
+    }));
+    return subscriber;
+  };
+
+  /**
+   * 发送文件消息
+   * 
+   * @param {string} message  消息内容 默认不能超过1024字节
+   * @param {string} filePath 消息文件路径 默认为当前AutoJS缓存文件夹下的.share 可以传递绝对路径 但是请自行确保路径可用
+   */
+  this.postInfo = function (message, filePath) {
+    filePath = getRealFilePath(filePath);
+    debugInfo(['向文件:{}中写入消息:{}', filePath, message]);
+    ProcessMappedShare.newProvider(filePath, this.bufferSize, runtime).postInfo(message);
+  };
+}
+
+/**
+ * 获取消息文件路径 默认为当前AutoJS缓存文件夹下的.share 可以传递绝对路径 但是请自行确保路径可用
+ * @param {string} filePath 
+ * @returns 实际路径
+ */
+function getRealFilePath(filePath) {
+  filePath = filePath || '.share';
+  if (!filePath.startsWith('/')) {
+    filePath = cachePath + '/' + filePath;
+  }
+  return filePath;
+}
+module.exports = new ProcessShare();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/RequestScreenCapture.js":
+/*!***************************************************!*\
+  !*** ./src/lib/prototype/RequestScreenCapture.js ***!
+  \***************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-12-30 20:16:48
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:19:26
+ * @Description: 
+ */
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  config = _require.config;
+var widgetUtils = __webpack_require__(/*! @/lib/prototype/WidgetUtils */ "./src/lib/prototype/WidgetUtils.js");
+var logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var automator = __webpack_require__(/*! @/lib/prototype/Automator */ "./src/lib/prototype/Automator.js");
+module.exports = function (landscape) {
+  var countDown = new java.util.concurrent.CountDownLatch(1);
+  var requestSuccess = false;
+  var confirmWaitingThread = threads.start(function () {
+    sleep(500);
+    if (requestSuccess) {
+      return;
+    }
+    var confirmWidget = widgetUtils.widgetGetOne(config.capture_permission_button || 'START NOW|立即开始|允许');
+    if (confirmWidget) {
+      sleep(200);
+      var remember = widgetUtils.widgetGetById("android:id/checkbox", 200);
+      if (!remember) {
+        remember = widgetUtils.widgetGetById("com.android.systemui:id/remember", 200);
+      }
+      if (remember) {
+        logUtils.debugInfo('找到了记住按钮，点击记住');
+        automator.clickCenter(remember);
+        sleep(200);
+      } else {
+        logUtils.warnInfo('未找到记住按钮');
+      }
+      logUtils.debugInfo('点击允许截图权限');
+      // 二次获取，理论上不会取不到
+      confirmWidget = widgetUtils.widgetGetOne(config.capture_permission_button || 'START NOW|立即开始|允许', 200) || confirmWidget;
+      automator.clickCenter(confirmWidget);
+    } else {
+      logUtils.warnInfo(['未找到允许截图按钮，查找内容为：{}', config.capture_permission_button || 'START NOW|立即开始|允许'], true);
+      countDown.countDown();
+    }
+  });
+  var requestThread = threads.start(function () {
+    requestSuccess = requestScreenCapture(landscape);
+    countDown.countDown();
+  });
+  var waitResult = countDown["await"](15, java.util.concurrent.TimeUnit.SECONDS);
+  if (!waitResult) {
+    logUtils.warnInfo('请求截屏权限超时');
+  }
+  logUtils.debugInfo('请求截屏权限结束：' + requestSuccess);
+  confirmWaitingThread.interrupt();
+  requestThread.interrupt();
+  return requestSuccess;
+};
+
+/***/ }),
+
+/***/ "./src/lib/prototype/RunningQueueDispatcher.js":
+/*!*****************************************************!*\
+  !*** ./src/lib/prototype/RunningQueueDispatcher.js ***!
+  \*****************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var STORAGE_KEY = "autojs_dispatch_queue_storage";
+var RUNNING_KEY = "qunningTask";
+var WAITING_QUEUE_KEY = "waitingQueue";
+var WRITE_LOCK_KEY = "writeLock";
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  storage_name = _require.storage_name;
+var lockableStorages = __webpack_require__(/*! @/lib/prototype/LockableStorage */ "./src/lib/prototype/LockableStorage.js");
+var Timers = __webpack_require__(/*! @/lib/prototype/Timers */ "./src/lib/prototype/Timers.js");
+var _logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var crashCatcher = __webpack_require__(/*! @/lib/prototype/CrashCatcher */ "./src/lib/prototype/CrashCatcher.js");
+function RunningQueueDispatcher() {
+  this.lockStorage = null;
+  this.currentEngineId = engines.myEngine().id;
+  this.currentEngineSource = engines.myEngine().getSource() + '';
+  this.checkDuplicateRunning = function (runningEngineId) {
+    var _this = this;
+    var runningEngines = this.tryGetRunningEngines();
+    if (runningEngines === null) {
+      // 获取运行中脚本引擎失败
+      _logUtils.errorInfo('校验重复运行异常，直接退出');
+      exit();
+    }
+    var runningSize = runningEngines.length;
+    var currentSource = this.currentEngineSource;
+    var currentEngineId = this.currentEngineId;
+    _logUtils.debugInfo('Dispatcher:当前脚本信息 id:' + currentEngineId + ' source:' + currentSource + ' 运行中脚本数量：' + runningSize);
+    if (runningSize > 1) {
+      runningEngines.forEach(function (engine) {
+        var compareEngine = engine;
+        var compareSource = compareEngine.getSource() + '';
+        _logUtils.debugInfo('Dispatcher:对比脚本信息 id:' + compareEngine.id + ' source:' + compareSource);
+        if (runningEngineId === compareEngine.id && currentEngineId !== compareEngine.id && compareSource === currentSource) {
+          _logUtils.warnInfo(['Dispatcher:脚本正在运行中 退出当前脚本：{} - {}', currentEngineId, currentSource], true);
+          _this.removeRunningTask(true, true);
+          exit();
+        }
+      });
+    }
+  };
+
+  /**
+   * 设置自动启动
+   * 
+   * @param {string} source 脚本path路径
+   * @param {number} seconds 延迟时间 秒
+   */
+  this.setUpAutoStart = function (source, seconds) {
+    var waitTime = seconds || 5;
+    _logUtils.debugInfo("定时[" + waitTime + "]秒后启动脚本: " + source);
+    var task = Timers.addDisposableTask({
+      path: source,
+      date: new Date().getTime() + waitTime * 1000
+    });
+    _logUtils.debugInfo("定时任务预定成功: " + task.id);
+  };
+
+  /**
+   * 立即启动目标脚本
+   * 
+   * @param {string} source 脚本path路径
+   */
+  this.executeTargetScript = function (source) {
+    _logUtils.logInfo(['启动目标脚本：{}', source]);
+    ui.run(function () {
+      engines.execScriptFile(source, {
+        path: source.substring(0, source.lastIndexOf('/')),
+        arguments: {
+          executeByDispatcher: true
+        }
+      });
+    });
+    sleep(1000);
+  };
+  this.getCurrentTaskInfo = function () {
+    return {
+      source: this.currentEngineSource,
+      engineId: this.currentEngineId,
+      storageKey: storage_name
+    };
+  };
+  this.clearAll = function () {
+    lockableStorages.remove(STORAGE_KEY);
+    _logUtils.logInfo('清除数据成功');
+  };
+  this.showDispatchStatus = function () {
+    var runningTaskStr = this.getStorage().get(RUNNING_KEY);
+    var waitingQueueStr = this.getStorage().get(WAITING_QUEUE_KEY);
+    var lockKeyStr = this.getStorage().get(WRITE_LOCK_KEY);
+    if (runningTaskStr) {
+      var runningTask = JSON.parse(runningTaskStr);
+      var timeout = new Date().getTime() - parseInt(runningTask.timeout);
+      _logUtils.logInfo('当前运行中的任务：' + runningTaskStr + (timeout > 0 ? ' 已超时' + (timeout / 1000.0).toFixed(2) + '秒' : ' 超时剩余时间' + (-timeout / 1000.0).toFixed(0) + '秒'));
+    } else {
+      _logUtils.logInfo('当前无运行中的任务');
+    }
+    if (waitingQueueStr && waitingQueueStr !== '[]') {
+      _logUtils.logInfo('当前等待中的队列：' + waitingQueueStr);
+    } else {
+      _logUtils.logInfo('当前无等待中的队列');
+    }
+    if (lockKeyStr) {
+      var key = JSON.parse(lockKeyStr);
+      _logUtils.logInfo('当前存在的锁：' + lockKeyStr + " 超时时间剩余：" + ((parseInt(key.timeout) - new Date().getTime()) / 1000.0).toFixed(2) + '秒');
+    } else {
+      _logUtils.logInfo('当前无存在的锁');
+    }
+  };
+  this.getStorage = function () {
+    if (this.lockStorage === null) {
+      this.lockStorage = lockableStorages.create(STORAGE_KEY);
+    }
+    return this.lockStorage;
+  };
+  this.clearLock = function () {
+    var taskInfo = this.getCurrentTaskInfo();
+    var storedLockStr = this.getStorage().get(WRITE_LOCK_KEY);
+    if (storedLockStr) {
+      var storedLock = JSON.parse(storedLockStr);
+      if (storedLock.source === taskInfo.source) {
+        _logUtils.debugInfo('移除任务锁：' + JSON.stringify(taskInfo));
+        this.getStorage().put(WRITE_LOCK_KEY, '');
+      }
+    }
+  };
+
+  /**
+   * 尝试获取锁
+   * @param {number} tryTime 尝试次数，默认一次
+   */
+  this.lock = function (tryTime) {
+    tryTime = tryTime || 1;
+    var lockSuccess = this.storageLock();
+    while (--tryTime > 0 && !lockSuccess) {
+      sleep(200);
+      lockSuccess = this.storageLock();
+    }
+    return lockSuccess;
+  };
+  this.putLockInfo = function (taskInfo) {
+    return this.getStorage().put(WRITE_LOCK_KEY, JSON.stringify({
+      source: taskInfo.source,
+      engineId: taskInfo.engineId,
+      count: 1,
+      timeout: new Date().getTime() + 30000
+    }));
+  };
+  this.storageLock = function () {
+    var taskInfo = this.getCurrentTaskInfo();
+    var storedLockStr = this.getStorage().get(WRITE_LOCK_KEY);
+    if (storedLockStr) {
+      var storedLock = JSON.parse(storedLockStr);
+      if (storedLock.source === taskInfo.source) {
+        if (storedLock.engineId === taskInfo.engineId) {
+          storedLock.count = parseInt(storedLock.count) + 1;
+          // 锁超时时间30秒
+          storedLock.timeout = new Date().getTime() + 30000;
+          return this.getStorage().put(WRITE_LOCK_KEY, JSON.stringify(storedLock));
+        } else {
+          // 校验加锁引擎是否挂了
+          var runningEngines = this.tryGetRunningEngines();
+          // null 说明获取运行中engines失败，作为操作异常，加锁失败
+          if (runningEngines === null || runningEngines.find(function (engine) {
+            return engine.id === storedLock.engineId;
+          })) {
+            return false;
+          } else {
+            _logUtils.warnInfo('加锁脚本引擎 engineId「' + storedLock.engineId + '」已停止，直接覆盖：' + JSON.stringify(storedLock));
+            return this.putLockInfo(taskInfo);
+          }
+        }
+      } else {
+        if (parseInt(storedLock.timeout) < new Date().getTime()) {
+          _logUtils.warnInfo('已有锁已超时，直接覆盖：' + JSON.stringify(storedLock));
+          return this.putLockInfo(taskInfo);
+        }
+        return false;
+      }
+    } else {
+      return this.putLockInfo(taskInfo);
+    }
+  };
+  this.unlock = function () {
+    var taskInfo = this.getCurrentTaskInfo();
+    var storedLockStr = this.getStorage().get(WRITE_LOCK_KEY);
+    if (storedLockStr) {
+      var storedLock = JSON.parse(storedLockStr);
+      if (storedLock.source === taskInfo.source && storedLock.engineId === taskInfo.engineId) {
+        if (parseInt(storedLock.count) > 1) {
+          storedLock.count = parseInt(storedLock.count) - 1;
+          return this.getStorage().put(WRITE_LOCK_KEY, JSON.stringify(storedLock));
+        } else {
+          return this.getStorage().put(WRITE_LOCK_KEY, '');
+        }
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  };
+  this.getRunningStatus = function () {
+    var storedRunningTask = this.getStorage().get(RUNNING_KEY);
+    if (storedRunningTask) {
+      var runningTask = JSON.parse(storedRunningTask);
+      var currentTimestamp = new Date().getTime();
+      if (currentTimestamp > runningTask.timeout) {
+        _logUtils.debugInfo('运行中任务已超时：' + storedRunningTask + ' 超时时间：' + ((currentTimestamp - runningTask.timeout) / 1000).toFixed(0) + '秒');
+        // 直接移除已超时运行中的任务
+        this.getStorage().put(RUNNING_KEY, '');
+        return null;
+      } else {
+        _logUtils.debugInfo('获取运行中任务信息：' + storedRunningTask + ' 超时剩余时间：' + ((runningTask.timeout - currentTimestamp) / 1000).toFixed(0) + '秒');
+        return runningTask;
+      }
+    } else {
+      return null;
+    }
+  };
+  this.getWaitingStatus = function () {
+    var _this2 = this;
+    // 任务队列去重
+    this.distinctAwaitTasks();
+    var waitingArrayStr = this.getStorage().get(WAITING_QUEUE_KEY);
+    var waitingArray = [];
+    if (waitingArrayStr) {
+      waitingArray = JSON.parse(waitingArrayStr) || [];
+    }
+    // 过滤自身
+    waitingArray = waitingArray.filter(function (task) {
+      return task.source !== _this2.currentEngineSource;
+    });
+    if (waitingArray && waitingArray.length > 0) {
+      return waitingArray[0];
+    }
+    return null;
+  };
+
+  /**
+   * 从等待队列队首移除任务，当外层已包裹lock 可忽略返回值 否则后续操作需要判断是否为null
+   */
+  this.popWaitingTask = function () {
+    var waitingArrayStr = this.getStorage().get(WAITING_QUEUE_KEY);
+    var waitingArray = null;
+    if (waitingArrayStr) {
+      waitingArray = JSON.parse(waitingArrayStr);
+    }
+    if (waitingArray && waitingArray.length > 0) {
+      var waitingTask = waitingArray.splice(0, 1);
+      if (this.lock()) {
+        this.getStorage().put(WAITING_QUEUE_KEY, JSON.stringify(waitingArray));
+        this.unlock();
+        return waitingTask;
+      }
+    }
+    return null;
+  };
+
+  /**
+   * @param {boolean} checkOwner 判断当前运行中的任务信息是否是当前脚本引擎施加的
+   * @param {boolean} notRemoveCrashFlag 重复执行的任务不移除运行中标记
+   * @param {function} callbackOnSuccess 移除成功后执行
+   */
+  this.removeRunningTask = function (checkOwner, notRemoveCrashFlag, callbackOnSuccess) {
+    callbackOnSuccess = callbackOnSuccess || function () {};
+    var taskInfo = this.getCurrentTaskInfo();
+    var runningTask = this.getRunningStatus();
+    if (runningTask !== null) {
+      // engineId判断所有权
+      if (runningTask.source === taskInfo.source && (!checkOwner || runningTask.engineId === taskInfo.engineId)) {
+        _logUtils.debugInfo('准备移除运行中任务');
+        if (this.lock(3)) {
+          this.getStorage().put(RUNNING_KEY, '');
+          callbackOnSuccess();
+          var waitingTask = this.getWaitingStatus();
+          if (waitingTask !== null && this.lock()) {
+            _logUtils.debugInfo('有任务在等待，执行它');
+            this.popWaitingTask();
+            _logUtils.debugInfo('执行等待队列首个任务：' + JSON.stringify(waitingTask));
+
+            // 将队列中任务放入执行中
+            this.doAddRunningTask(waitingTask);
+            sleep(1000);
+            this.unlock();
+            // 将队列中的任务执行掉
+            this.executeTargetScript(waitingTask.source);
+          } else {
+            _logUtils.debugInfo('无任务等待中');
+          }
+          this.unlock();
+        }
+      } else {
+        _logUtils.warnInfo('运行中任务：' + JSON.stringify(runningTask) + '和当前任务：' + JSON.stringify(taskInfo) + '不同，不可移除');
+      }
+    } else {
+      _logUtils.warnInfo('无任务在运行中，不可移除');
+      callbackOnSuccess();
+    }
+    // 重复执行的任务 不移除运行中的标记
+    if (!notRemoveCrashFlag) {
+      crashCatcher.setDone();
+    }
+    // 清空当前任务施加的锁
+    this.clearLock();
+  };
+  this.doAddRunningTask = function (taskInfo) {
+    // 默认超时时间15分钟
+    taskInfo.timeout = new Date().getTime() + 15 * 60 * 1000;
+    this.getStorage().put(RUNNING_KEY, JSON.stringify(taskInfo));
+    if (taskInfo.source === this.getCurrentTaskInfo().source) {
+      // 当前脚本正常开始执行后 标记为运行中
+      crashCatcher.setOnRunning();
+    } else if (taskInfo.storageKey) {
+      // 对目标脚本设置crashCatcher的running状态，避免崩溃自启动后无法自动执行
+      _logUtils.debugInfo(['设置目标任务状态为执行中 storageKey: {}', taskInfo.storageKey]);
+      var crashStateStorage = lockableStorages.create(taskInfo.storageKey + '_crash_catch');
+      crashStateStorage.put('running', true);
+      crashStateStorage.put('running_source', taskInfo.source);
+    }
+    // 杀死运行中但是未加入队列的任务
+  };
+  this.addRunningTask = function () {
+    var taskInfo = this.getCurrentTaskInfo();
+    var runningTask = this.getRunningStatus();
+    if (runningTask !== null) {
+      _logUtils.debugInfo('当前有任务正在运行：' + JSON.stringify(runningTask));
+      if (runningTask.source === taskInfo.source) {
+        _logUtils.debugInfo('运行中脚本任务和当前任务相同，继续判断同源脚本是否正在运行');
+        // 如果判断当前运行中和存储任务状态是同一个则不去校验是否重复运行
+        if (runningTask.engineId !== taskInfo.engineId) {
+          // 避免重复运行，如果挂了则继续
+          this.checkDuplicateRunning(runningTask.engineId);
+          var oldRunningEngineId = runningTask.engineId;
+          if (this.lock(3)) {
+            runningTask = this.getRunningStatus();
+            if (runningTask == null || oldRunningEngineId === runningTask.engineId) {
+              // 更新运行中任务信息
+              this.doAddRunningTask(taskInfo);
+              this.unlock();
+            } else {
+              _logUtils.debugInfo(['重新获取的运行中engineId: {} 和旧的engineId: {} 不同 重新尝试加入运行', runningTask.engineId, oldRunningEngineId]);
+              this.unlock();
+              this.addRunningTask();
+            }
+          } else {
+            _logUtils.warnInfo('更新运行中任务信息失败');
+          }
+        }
+        _logUtils.debugInfo('运行状态校验成功，执行后续功能');
+        return;
+      } else {
+        var runningEngines = this.tryGetRunningEngines();
+        if (runningEngines === null || runningEngines.find(function (v) {
+          return v.id === runningTask.engineId || runningTask.source === v.getSource() + '';
+        })) {
+          _logUtils.debugInfo('运行中任务执行正常');
+        } else {
+          if (this.lock(3)) {
+            _logUtils.warnInfo('运行中任务已经异常关闭，直接删除运行中标记');
+            // 清空运行中数据
+            this.getStorage().put(RUNNING_KEY, '');
+            this.unlock();
+            // 然后重新加入运行中任务
+            return this.addRunningTask();
+          } else {
+            _logUtils.warnInfo('运行中任务已经异常关闭，删除运行中标记失败');
+          }
+        }
+        _logUtils.debugInfo('将当前task放入等待队列：' + JSON.stringify(taskInfo));
+        this.addAwaitTask(taskInfo);
+        exit();
+      }
+    } else {
+      var waitingTask = this.getWaitingStatus();
+      if (waitingTask !== null) {
+        _logUtils.debugInfo('等待队列中已有任务待运行：' + JSON.stringify(waitingTask));
+        if (waitingTask.source === taskInfo.source) {
+          _logUtils.debugInfo('等待中任务和当前任务相同，可直接执行，将任务信息放入running');
+          if (this.lock(3)) {
+            this.doAddRunningTask(taskInfo);
+            this.popWaitingTask();
+            this.unlock();
+          } else {
+            _logUtils.errorInfo('获取锁失败，无法继续执行任务：' + JSON.stringify(taskInfo));
+            _logUtils.warnInfo('尝试将任务加入等待队列中');
+            if (this.lock(3)) {
+              this.addAwaitTask(taskInfo);
+              this.unlock();
+            } else {
+              if (!this.isTaskInQueue(taskInfo)) {
+                _logUtils.warnInfo('尝试将任务加入等待队列失败，定时十秒后启动');
+                this.setUpAutoStart(taskInfo.source, 10);
+              }
+            }
+            exit();
+          }
+        } else {
+          _logUtils.debugInfo('等待中任务和当前任务不同，将任务信息放入等待队列：' + JSON.stringify(taskInfo));
+          if (this.lock(3)) {
+            this.addAwaitTask(taskInfo);
+            this.popWaitingTask();
+            _logUtils.debugInfo('执行等待队列首个任务：' + JSON.stringify(waitingTask));
+            // 将队列中任务放入执行中
+            this.doAddRunningTask(waitingTask);
+            this.unlock();
+            // 将队列中的任务执行掉
+            this.executeTargetScript(waitingTask.source);
+            exit();
+          } else {
+            if (!this.isTaskInQueue(taskInfo)) {
+              _logUtils.errorInfo('获取锁失败，无法执行等待中任务，当前任务也未成功入队列，设定10秒后启动：' + JSON.stringify(taskInfo));
+              this.setUpAutoStart(taskInfo.source, 10);
+            }
+            exit();
+          }
+        }
+      } else {
+        if (this.lock()) {
+          _logUtils.debugInfo('当前无任务等待，直接执行：' + JSON.stringify(taskInfo));
+          this.doAddRunningTask(taskInfo);
+          this.unlock();
+        } else {
+          _logUtils.errorInfo('获取锁失败，无法继续执行任务：' + JSON.stringify(taskInfo));
+          this.setUpAutoStart(taskInfo.source, 10);
+          exit();
+        }
+      }
+    }
+  };
+  this.tryAddRunningTask = function () {
+    var taskInfo = this.getCurrentTaskInfo();
+    var runningTask = this.getRunningStatus();
+    if (runningTask !== null) {
+      _logUtils.debugInfo('当前有任务正在运行：' + JSON.stringify(runningTask));
+      if (runningTask.source === taskInfo.source) {
+        _logUtils.debugInfo('运行中脚本任务和当前任务相同，继续判断同源脚本是否正在运行');
+        // 如果判断当前运行中和存储任务状态是同一个则不去校验是否重复运行
+        if (runningTask.engineId !== taskInfo.engineId) {
+          // 避免重复运行，如果挂了则继续
+          this.checkDuplicateRunning(runningTask.engineId);
+          var oldRunningEngineId = runningTask.engineId;
+          if (this.lock(3)) {
+            runningTask = this.getRunningStatus();
+            if (runningTask == null || oldRunningEngineId === runningTask.engineId) {
+              // 更新运行中任务信息
+              this.doAddRunningTask(taskInfo);
+              this.unlock();
+            } else {
+              _logUtils.debugInfo(['重新获取的运行中engineId: {} 和旧的engineId: {} 不同 重新尝试加入运行', runningTask.engineId, oldRunningEngineId]);
+              this.unlock();
+              return this.tryAddRunningTask();
+            }
+          } else {
+            _logUtils.warnInfo('更新运行中任务信息失败');
+          }
+        }
+        _logUtils.debugInfo('运行状态校验成功，执行后续功能');
+        return true;
+      } else {
+        var runningEngines = this.tryGetRunningEngines();
+        if (runningEngines === null || runningEngines.find(function (v) {
+          return v.id === runningTask.engineId || runningTask.source === v.getSource() + '';
+        })) {
+          _logUtils.debugInfo('运行中任务执行正常');
+        } else {
+          if (this.lock(3)) {
+            _logUtils.warnInfo('运行中任务已经异常关闭，直接删除运行中标记');
+            // 清空运行中数据
+            this.getStorage().put(RUNNING_KEY, '');
+            this.unlock();
+            // 然后重新加入运行中任务
+            return this.tryAddRunningTask();
+          } else {
+            _logUtils.warnInfo('运行中任务已经异常关闭，删除运行中标记失败');
+          }
+        }
+        return false;
+      }
+    } else {
+      if (this.lock()) {
+        _logUtils.debugInfo('当前无任务等待，直接执行：' + JSON.stringify(taskInfo));
+        this.doAddRunningTask(taskInfo);
+        this.unlock();
+        return true;
+      } else {
+        _logUtils.errorInfo('获取锁失败，无法继续执行任务：' + JSON.stringify(taskInfo));
+        return false;
+      }
+    }
+  };
+  this.addAwaitTask = function (taskInfo) {
+    if (this.isTaskInQueue(taskInfo)) {
+      _logUtils.debugInfo(['任务：{} 已经在队列中，不再加入任务队列', JSON.stringify(taskInfo)]);
+      return;
+    }
+    var storedArrayStr = this.getStorage().get(WAITING_QUEUE_KEY);
+    var storedArray = null;
+    if (storedArrayStr) {
+      storedArray = JSON.parse(storedArrayStr);
+    } else {
+      storedArray = [];
+    }
+    storedArray.push(taskInfo);
+    if (this.lock(3)) {
+      this.getStorage().put(WAITING_QUEUE_KEY, JSON.stringify(storedArray));
+      this.distinctAwaitTasks();
+      this.unlock();
+    } else {
+      _logUtils.errorInfo('添加等待任务队列失败，获取写锁失败，任务信息：' + JSON.stringify(taskInfo));
+      this.setUpAutoStart(taskInfo.source, 10);
+    }
+  };
+  this.distinctAwaitTasks = function () {
+    if (this.lock()) {
+      var storedArrayStr = this.getStorage().get(WAITING_QUEUE_KEY);
+      var storedArray = null;
+      if (storedArrayStr) {
+        storedArray = JSON.parse(storedArrayStr);
+      } else {
+        storedArray = [];
+      }
+      if (storedArray && storedArray.length > 0) {
+        _logUtils.debugInfo('去重复前的任务队列：' + storedArrayStr);
+        var distinctArray = [];
+        storedArray.forEach(function (task) {
+          if (distinctArray.map(function (r) {
+            return r.source;
+          }).indexOf(task.source) < 0) {
+            distinctArray.push(task);
+          }
+        });
+        var distinctArrayStr = JSON.stringify(distinctArray);
+        _logUtils.debugInfo('去重复后的任务队列：' + distinctArrayStr);
+        this.getStorage().put(WAITING_QUEUE_KEY, distinctArrayStr);
+      } else {
+        _logUtils.debugInfo('队列小于等于1 不需要去重:' + storedArrayStr);
+      }
+      this.unlock();
+    }
+  };
+
+  /**
+   * 判断任务是否已经加入到了等待队列
+   */
+  this.isTaskInQueue = function (taskInfo) {
+    this.distinctAwaitTasks();
+    var storedArrayStr = this.getStorage().get(WAITING_QUEUE_KEY);
+    var storedArray = null;
+    if (storedArrayStr) {
+      storedArray = JSON.parse(storedArrayStr);
+    } else {
+      storedArray = [];
+    }
+    taskInfo = taskInfo || this.getCurrentTaskInfo();
+    if (storedArray.length > 0 && storedArray.find(function (task) {
+      return task.source === taskInfo.source;
+    })) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  /**
+   * 尝试获取运行中的脚本引擎
+   * 每200~300毫秒获取一次
+   */
+  this.tryGetRunningEngines = function (tryCount) {
+    var runningEngines = null;
+    tryCount = tryCount || 5;
+    while (runningEngines === null && tryCount-- > 0) {
+      // engines.all()有并发问题，尝试多次获取
+      try {
+        runningEngines = engines.all();
+      } catch (e) {
+        // 延迟随机时间200~300毫秒
+        sleep(200 + parseInt(Math.random() * 100 % 100));
+      }
+    }
+    if (runningEngines === null) {
+      _logUtils.warnInfo('获取运行中脚本引擎失败');
+    }
+    return runningEngines;
+  };
+
+  /**
+   * 对运行中任务进行续期
+   * 
+   * @param {number} time 分钟 默认15
+   */
+  this.renewalRunningTask = function (time, keepRunning) {
+    time = time || 15;
+    var taskInfo = this.getCurrentTaskInfo();
+    var runningTask = this.getRunningStatus();
+    if (runningTask) {
+      // 运行中任务不是自己，无法续期，直接退出当前脚本
+      // 可能存在的情况是续期操作太晚，导致其他脚本已经进入运行状态，必须让出执行权
+      if (runningTask.source !== taskInfo.source || runningTask.engineId !== taskInfo.engineId) {
+        _logUtils.debugInfo(['当前运行中任务和当前任务不同，无法续期 运行中任务：{} {}', runningTask.engineId, runningTask.source]);
+        _logUtils.debugInfo(['当前任务：{} {}', taskInfo.engineId, taskInfo.source]);
+        if (keepRunning) {
+          _logUtils.debugInfo(['保持运行，直到获取任务锁']);
+        } else {
+          _logUtils.debugInfo(['将当前任务加入等待队列']);
+          this.addAwaitTask(taskInfo);
+          exit();
+        }
+      }
+    }
+    // 没有运行中的任务或者运行中的任务是自身，直接续期
+    taskInfo.timeout = new Date().getTime() + time * 60000;
+    if (this.lock()) {
+      this.getStorage().put(RUNNING_KEY, JSON.stringify(taskInfo));
+      this.unlock();
+    }
+  };
+}
+module.exports = new RunningQueueDispatcher();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/StorageFactory.js":
+/*!*********************************************!*\
+  !*** ./src/lib/prototype/StorageFactory.js ***!
+  \*********************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/**********
+ * 
+ * 封装了storages的操作，所有数据保存在 config.js中定义的storage_name + '_runtime' 下，可以通过后续的功能直接导出这些缓存数据
+ * 简化了创建和更新的过程，同时可以实现缓存的自动过期，仅当天有效
+ * 0.外部使用时通过require('@/lib/prototype/StorageFactory')获取当前脚本全局的storageFactory
+ * 1.初始化 storageFactory.initFactoryByKey(${KEY}, ${defaultValue}) 指定key和默认值 初始化时已存在数据不会被覆盖
+ * 2.获取数据 通过key来获取 storageFactory.getValueByKey(${KEY}[,true]) 通过指定key获取缓存数据，默认缓存数据仅当天有效，失效后返回默认值；第二个参数可选，代表不需要将缓存数据过期
+ * 3.更新数据 storageFactory.updateValueByKey(${KEY}, ${VALUE}) 更新新的值到KEY对应的缓存中
+ * 
+ * 注意事项：该方法不是线程安全的 尽量不要在多线程中获取和更新值
+ **********/
+
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  _storage_name = _require.storage_name;
+var _logUtils = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js");
+var formatDate = __webpack_require__(/*! @/lib/DateUtil.js */ "./src/lib/DateUtil.js");
+var RUNTIME_STORAGE = _storage_name + "_runtime";
+
+/**
+ * 内部实际保存的Storage对象
+ * 
+ * @param {string} key 
+ */
+function BaseStorageFactory(key) {
+  this.key = key || 'EMPTY_DEFAULT_KEY';
+  this.defaultValue = {};
+  this.runtimeStorage = storages.create(RUNTIME_STORAGE);
+
+  /**
+   * 更新数据
+   * @param {object} value 
+   */
+  this.updateStorageValue = function (value) {
+    var today = formatDate(new Date(), 'yyyy-MM-dd');
+    this.runtimeStorage.put(this.key, JSON.stringify({
+      date: today,
+      value: value
+    }));
+  };
+
+  /**
+   * 获取缓存中当天的数据，和时间相关，当天不存在则创建默认值
+   */
+  this.getTodaysRuntimeStorage = function () {
+    var today = formatDate(new Date(), 'yyyy-MM-dd');
+    var existStoreObjStr = this.runtimeStorage.get(this.key);
+    if (existStoreObjStr) {
+      try {
+        var existStoreObj = JSON.parse(existStoreObjStr);
+        if (existStoreObj.date === today) {
+          // 兼容旧数据
+          if (typeof existStoreObj.value === 'undefined') {
+            var value = {};
+            Object.assign(value, existStoreObj);
+            existStoreObj.value = value;
+          }
+          return existStoreObj.value;
+        }
+      } catch (e) {
+        _logUtils.errorInfo(["解析JSON数据失败, key:{} value:{} error:{}", this.key, existStoreObjStr, e]);
+      }
+    }
+    return this.createDefaultStorage(today);
+  };
+
+  /**
+   * 获取缓存中的数据，和时间无关，不存在则创建默认值
+   */
+  this.getRuntimeStorage = function () {
+    var existStoreObjStr = this.runtimeStorage.get(this.key);
+    if (existStoreObjStr) {
+      try {
+        var existStoreObj = JSON.parse(existStoreObjStr);
+        // 兼容旧数据
+        if (typeof existStoreObj.value === 'undefined') {
+          var value = {};
+          Object.assign(value, existStoreObj);
+          existStoreObj.value = value;
+        }
+        return existStoreObj.value;
+      } catch (e) {
+        _logUtils.errorInfo(["解析JSON数据失败, key:{} value:{} error:{}", this.key, existStoreObjStr, e]);
+      }
+    }
+    return this.createDefaultStorage(formatDate(new Date(), 'yyyy-MM-dd'));
+  };
+
+  /**
+   * 创建默认数据
+   * 
+   * @param {string} date 日期
+   */
+  this.createDefaultStorage = function (date) {
+    var initStore = this.getDefaultStorageValue(date);
+    this.runtimeStorage.put(this.key, JSON.stringify(initStore));
+    return initStore.value;
+  };
+
+  /**
+   * 获取初始值
+   *
+   * @param {string} date 指定日期
+   */
+  this.getDefaultStorageValue = function (date) {
+    return {
+      date: date,
+      value: this.defaultValue
+    };
+  };
+
+  /**
+   * 
+   * @param {*} defaultValue 
+   */
+  this.setDefault = function (defaultValue) {
+    if (typeof defaultValue !== 'undefined') {
+      this.defaultValue = defaultValue;
+    }
+    return this;
+  };
+}
+
+/**
+ * 对外使用的StorageFactory 通过KEY获取缓存的storage数据
+ */
+var StorageFactory = function StorageFactory() {
+  /**
+   * 当前已经持久化的storage信息
+   */
+  this.persistedStorageFactory = {};
+
+  /**
+   * 初始化一个存储对象
+   * 
+   * @param {string} key 缓存键
+   * @param {object} defaultValue 初始值
+   */
+  this.initFactoryByKey = function (key, defaultValue) {
+    this.persistedStorageFactory[key] = new BaseStorageFactory(key).setDefault(defaultValue);
+    _logUtils.debugForDev(['key:{} 当前值：{}', key, JSON.stringify(this.persistedStorageFactory[key].getRuntimeStorage())]);
+  };
+
+  /**
+   * 通过缓存键获取缓存对象，不存在时会自动初始化 此时默认值为{}
+   * 
+   * @param {string} key 
+   * @returns 
+   */
+  this.getFactoryByKey = function (key) {
+    var factory = this.persistedStorageFactory[key];
+    if (!factory) {
+      factory = new BaseStorageFactory(key);
+      this.persistedStorageFactory[key] = factory;
+    }
+    return factory;
+  };
+
+  /**
+   * 根据key获取对应的值
+   * 
+   * @param {string} key 
+   * @param {boolean} fullTime 是否和时间无关的数据，如果不传或者false获取当天的数据
+   */
+  this.getValueByKey = function (key, fullTime) {
+    if (fullTime) {
+      return this.getFactoryByKey(key).getRuntimeStorage();
+    } else {
+      return this.getFactoryByKey(key).getTodaysRuntimeStorage();
+    }
+  };
+
+  /**
+   * 更新数据
+   * 
+   * @param {string} key 
+   * @param {object} value 
+   */
+  this.updateValueByKey = function (key, value) {
+    return this.getFactoryByKey(key).updateStorageValue(value);
+  };
+};
+module.exports = new StorageFactory();
+
+/***/ }),
+
+/***/ "./src/lib/prototype/Timers.js":
+/*!*************************************!*\
+  !*** ./src/lib/prototype/Timers.js ***!
+  \*************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _interopRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/interopRequireDefault */ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js");
+var _typeof2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/typeof */ "./node_modules/@babel/runtime/helpers/typeof.js"));
+/*
+ * @Author: SilvMonFr.00 https://github.com/SuperMonster003
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-06 19:08:21
+ * @Description: 定时任务桥接，由大佬SilvMonFr.00提供
+ */
+importPackage(org.joda.time);
+var waitForAction = _waitForAction;
+module.exports = function (_runtime_, scope) {
+  var is_pro = Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/);
+  var is_modify = Object.prototype.toString.call(org.autojs.autojsm.timing.TimedTask).match(/Java(Class|Object)/);
+  var timing = is_pro ? com.stardust.autojs.core.timing : is_modify ? org.autojs.autojsm.timing : org.autojs.autojs.timing;
+  var timers = Object.create(_runtime_.timers);
+  var TimedTask = is_pro ? timing.TimedTask.Companion : timing.TimedTask;
+  var IntentTask = timing.IntentTask;
+  var TimedTaskManager = is_pro ? timing.TimedTaskManager.Companion.getInstance() : timing.TimedTaskManager.getInstance();
+  var bridges = runtime.bridges.bridges;
+  var days_ident = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', '一', '二', '三', '四', '五', '六', '日', 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 7].map(function (value) {
+    return value.toString();
+  });
+  scope.__asGlobal__(timers, ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate']);
+  scope.loop = function () {
+    console.warn("loop() has been deprecated and has no effect. Remove it from your code.");
+  };
+  timers.addDailyTask = function (task) {
+    var localTime = parseDateTime("LocalTime", task.time);
+    var timedTask = TimedTask.dailyTask(localTime, files.path(task.path), parseConfig(task));
+    addTask(timedTask);
+    return timedTask;
+  };
+  timers.addWeeklyTask = function (task) {
+    var localTime = parseDateTime("LocalTime", task.time);
+    var timeFlag = 0;
+    for (var i = 0; i < task.daysOfWeek.length; i++) {
+      var dayString = task.daysOfWeek[i].toString();
+      var dayIndex = days_ident.indexOf(dayString.toLowerCase()) % 7;
+      if (!~dayIndex) throw new Error('unknown day: ' + dayString);
+      timeFlag |= TimedTask.getDayOfWeekTimeFlag(dayIndex + 1);
+    }
+    var timedTask = TimedTask.weeklyTask(localTime, new java.lang.Long(timeFlag), files.path(task.path), parseConfig(task));
+    addTask(timedTask);
+    return timedTask;
+  };
+  timers.addDisposableTask = function (task) {
+    var localDateTime = parseDateTime("LocalDateTime", task.date);
+    var timedTask = TimedTask.disposableTask(localDateTime, files.path(task.path), parseConfig(task));
+    addTask(timedTask);
+    return timedTask;
+  };
+  timers.addIntentTask = function (task) {
+    var intentTask = new IntentTask();
+    intentTask.setLocal(task.isLocal);
+    intentTask.setScriptPath(files.path(task.path));
+    task.action && intentTask.setAction(task.action);
+    addTask(intentTask);
+    return intentTask;
+  };
+  timers.getTimedTask = function (id) {
+    return TimedTaskManager.getTimedTask(id);
+  };
+  timers.getIntentTask = function (id) {
+    return TimedTaskManager.getIntentTask(id);
+  };
+  timers.removeIntentTask = function (id) {
+    if (!id && isNaN(+id)) return;
+    var task = timers.getIntentTask(id);
+    return task && removeTask(task);
+  };
+  timers.removeTimedTask = function (id) {
+    if (!id && isNaN(+id)) return;
+    var task = timers.getTimedTask(id);
+    return task && removeTask(task);
+  };
+  timers.queryTimedTasks = function (options, callback) {
+    options = options || {};
+    var sql = '';
+    var args = [];
+    function sqlAppend(str) {
+      if (sql.length === 0) {
+        sql += str;
+      } else {
+        sql += ' AND ' + str;
+      }
+      return true;
+    }
+    var path = options.path;
+    path && sqlAppend('script_path = ?') && args.push(path);
+    return is_pro ? bridges.toArray(TimedTaskManager.queryTimedTasks(sql || null, args)) : function () {
+      var list = TimedTaskManager.getAllTasksAsList().toArray();
+      if (options.path) list = list.filter(function (task) {
+        return task.getScriptPath() === path;
+      });
+      return list;
+    }();
+  };
+  timers.queryIntentTasks = function (options, callback) {
+    var allIntentTasks = TimedTaskManager.getAllIntentTasksAsList();
+    return bridges.toArray(allIntentTasks).filter(function (intentTask) {
+      return (options.action ? intentTask.getAction() === options.action : true) && (options.path ? intentTask.getScriptPath() === options.path : true);
+    });
+  };
+  return timers;
+
+  // tool function(s) //
+
+  function parseConfig(c) {
+    var config = new com.stardust.autojs.execution.ExecutionConfig();
+    config.delay = c.delay || 0;
+    config.interval = c.interval || 0;
+    config.loopTimes = c.loopTimes === undefined ? 1 : c.loopTimes;
+    return config;
+  }
+  function parseDateTime(clazz, dateTime) {
+    clazz = is_pro ? clazz : org.joda.time[clazz];
+    if (typeof dateTime == 'string') {
+      return is_pro ? TimedTask.parseDateTime(clazz, dateTime) : clazz.parse(dateTime);
+    } else if ((0, _typeof2["default"])(dateTime) == 'object' && dateTime.constructor === Date) {
+      return is_pro ? TimedTask.parseDateTime(clazz, dateTime.getTime()) : new clazz(dateTime.getTime());
+    } else if (typeof dateTime == 'number' && isFinite(dateTime)) {
+      return is_pro ? TimedTask.parseDateTime(clazz, dateTime) : new clazz(dateTime);
+    } else {
+      throw new Error("cannot parse date time: " + dateTime);
+    }
+  }
+  function addTask(task) {
+    TimedTaskManager[is_pro ? "addTaskSync" : "addTask"](task);
+    waitForAction(function () {
+      return task.id !== 0;
+    }, 500, 80);
+  }
+  function removeTask(task) {
+    var id = task.id;
+    TimedTaskManager[is_pro ? "removeTaskSync" : "removeTask"](task);
+    return waitForAction(function () {
+      return !timers.getTimedTask(id);
+    }, 500, 80);
+  }
+}(runtime, __webpack_require__.g);
+
+// monster function(s) //
+
+function _waitForAction(f, timeout_or_times, interval) {
+  var _timeout = timeout_or_times || 10000;
+  var _interval = interval || 200;
+  var _times = _timeout < 100 ? _timeout : ~~(_timeout / _interval) + 1;
+  var _messageAction = typeof messageAction === "undefined" ? messageActionRaw : messageAction;
+  while (!_checkF(f) && _times--) sleep(_interval);
+  return _times >= 0;
+
+  // tool function(s) //
+
+  function _checkF(f) {
+    var _classof = function _classof(o) {
+      return Object.prototype.toString.call(o).slice(8, -1);
+    };
+    if (_classof(f) === "JavaObject") return _checkF(function () {
+      return f.exists();
+    });
+    if (_classof(f) === "Array") {
+      var _arr = f;
+      var _logic_flag = "all";
+      if (typeof _arr[_arr.length - 1] === "string") _logic_flag = _arr.pop();
+      if (_logic_flag.match(/^(or|one)$/)) _logic_flag = "one";
+      for (var i = 0, len = _arr.length; i < len; i += 1) {
+        if (!(0, _typeof2["default"])(_arr[i]).match(/function|object/)) _messageAction("数组参数中含不合法元素", 8, 1, 0, 1);
+        if (_logic_flag === "all" && !_checkF(_arr[i])) return false;
+        if (_logic_flag === "one" && _checkF(_arr[i])) return true;
+      }
+      return _logic_flag === "all";
+    } else if (typeof f === "function") return f();else _messageAction("\"waitForAction\"传入f参数不合法\n\n" + f.toString() + "\n", 8, 1, 1, 1);
+  }
+
+  // raw function(s) //
+
+  function messageActionRaw(msg, msg_level, toast_flag) {
+    var _msg = msg || " ";
+    if (msg_level && msg_level.toString().match(/^t(itle)?$/)) {
+      return messageAction("[ " + msg + " ]", 1, toast_flag);
+    }
+    var _msg_level = typeof +msg_level === "number" ? +msg_level : -1;
+    toast_flag && toast(_msg);
+    _msg_level === 1 && log(_msg) || _msg_level === 2 && console.info(_msg) || _msg_level === 3 && console.warn(_msg) || _msg_level >= 4 && console.error(_msg);
+    _msg_level >= 8 && exit();
+    return !(_msg_level in {
+      3: 1,
+      4: 1
+    });
+  }
+}
+
+/***/ }),
+
+/***/ "./src/lib/prototype/WidgetUtils.js":
+/*!******************************************!*\
+  !*** ./src/lib/prototype/WidgetUtils.js ***!
+  \******************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-11-05 09:12:00
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:22:08
+ * @Description: 
+ */
+// 针对当前项目的公共方法封装，方便不同项目之间直接同步BaseCommonFunction不用再对比内容
+var _ProjectWidgetUtils = __webpack_require__(/*! @/lib/ProjectWidgetUtils.js */ "./src/lib/ProjectWidgetUtils.js");
+module.exports = new _ProjectWidgetUtils();
+
+/***/ }),
+
+/***/ "./src/secureConfig.js":
+/*!*****************************!*\
+  !*** ./src/secureConfig.js ***!
+  \*****************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-12-09 20:42:08
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-16 20:36:16
+ * @Description: 
+ */
+var config_instance = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js");
+var config = config_instance.config,
+  default_config = config_instance.default_config;
+var securityFields = ['password', 'alipay_lock_password'];
+var AesUtil = __webpack_require__(/*! @/lib/AesUtil.js */ "./src/lib/AesUtil.js");
+var aesKey = device.getAndroidId();
+Object.keys(default_config).forEach(function (key) {
+  var configValue = config[key];
+  if (typeof configValue !== 'undefined') {
+    if (securityFields.indexOf(key) > -1) {
+      configValue = AesUtil.decrypt(configValue, aesKey) || configValue;
+    }
+    config[key] = configValue;
+  }
+});
+config_instance.securityFields = securityFields;
+module.exports = config_instance;
+
+/***/ }),
+
+/***/ "./src/simpleConfig.js":
+/*!*****************************!*\
+  !*** ./src/simpleConfig.js ***!
+  \*****************************/
+/***/ ((module) => {
+
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2019-12-09 20:42:08
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-16 21:27:43
+ * @Description: 
+ */
+var is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/);
+var default_config = {
+  password: '',
+  account_password: "722537000a",
+  account_list: [],
+  timeout_unlock: 1000,
+  timeout_findOne: 1000,
+  timeout_existing: 8000,
+  // 异步等待截图，当截图超时后重新获取截图 默认开启
+  async_waiting_capture: true,
+  capture_waiting_time: 500,
+  show_debug_log: true,
+  show_engine_id: false,
+  develop_mode: false,
+  develop_saving_mode: false,
+  enable_visual_helper: false,
+  check_device_posture: false,
+  check_distance: false,
+  posture_threshold_z: 6,
+  // 电量保护，低于该值延迟60分钟执行脚本
+  battery_keep_threshold: 20,
+  auto_lock: false,
+  lock_x: 150,
+  lock_y: 970,
+  // 是否根据当前锁屏状态来设置屏幕亮度，当锁屏状态下启动时 设置为最低亮度，结束后设置成自动亮度
+  auto_set_brightness: false,
+  // 锁屏启动关闭提示框
+  dismiss_dialog_if_locked: true,
+  request_capture_permission: true,
+  capture_permission_button: 'START NOW|立即开始|允许',
+  // 是否保存日志文件，如果设置为保存，则日志文件会按时间分片备份在logback/文件夹下
+  save_log_file: true,
+  async_save_log_file: true,
+  back_size: '100',
+  // 控制台最大日志长度，仅免费版有用
+  console_log_maximum_size: 1500,
+  // 通话状态监听
+  enable_call_state_control: false,
+  // 单脚本模式 是否只运行一个脚本 不会同时使用其他的 开启单脚本模式 会取消任务队列的功能。
+  // 比如同时使用蚂蚁庄园 则保持默认 false 否则设置为true 无视其他运行中的脚本
+  single_script: false,
+  auto_restart_when_crashed: false,
+  // 是否使用模拟的滑动，如果滑动有问题开启这个 当前默认关闭 经常有人手机上有虚拟按键 然后又不看文档注释的
+  useCustomScrollDown: true,
+  // 排行榜列表下滑速度 200毫秒 不要太低否则滑动不生效 仅仅针对useCustomScrollDown=true的情况
+  scrollDownSpeed: 200,
+  bottomHeight: 200,
+  // 当以下包正在前台运行时，延迟执行
+  skip_running_packages: [],
+  warn_skipped_ignore_package: false,
+  warn_skipped_too_much: false,
+  auto_check_update: false,
+  github_url: '',
+  // github release url 用于检测更新状态
+  github_latest_url: 'https://api.github.com/repos/LionYan-Coder/AutoSignAli/releases/latest',
+  // 延迟启动时延 5秒 悬浮窗中进行的倒计时时间
+  delayStartTime: 5,
+  device_width: device.width,
+  device_height: device.height,
+  // 是否是AutoJS Pro  需要屏蔽部分功能，暂时无法实现：生命周期监听等 包括通话监听
+  is_pro: is_pro,
+  auto_set_bang_offset: true,
+  bang_offset: 0,
+  thread_name_prefix: 'autoscript_',
+  // 标记是否清除webview缓存
+  clear_webview_cache: false
+};
+// 不同项目需要设置不同的storageName，不然会导致配置信息混乱
+var CONFIG_STORAGE_NAME = 'AutoSignAliPay';
+var PROJECT_NAME = '支付宝批量登录脚本';
+var config = {};
+var storageConfig = storages.create(CONFIG_STORAGE_NAME);
+Object.keys(default_config).forEach(function (key) {
+  var storedVal = storageConfig.get(key);
+  if (typeof storedVal !== 'undefined') {
+    config[key] = storedVal;
+  } else {
+    config[key] = default_config[key];
+  }
+});
+
+// 覆写配置信息
+config.overwrite = function (key, value) {
+  var storage_name = CONFIG_STORAGE_NAME;
+  var config_key = key;
+  if (key.indexOf('.') > -1) {
+    var keyPair = key.split('.');
+    storage_name = CONFIG_STORAGE_NAME + '_' + keyPair[0];
+    key = keyPair[1];
+    config_key = keyPair[0] + '_config';
+    if (!config.hasOwnProperty(config_key) || !config[config_key].hasOwnProperty(key)) {
+      return;
+    }
+    config[config_key][key] = value;
+  } else {
+    if (!config.hasOwnProperty(config_key)) {
+      return;
+    }
+    config[config_key] = value;
+  }
+  console.verbose('覆写配置', storage_name, key);
+  storages.create(storage_name).put(key, value);
+};
+module.exports = {
+  config: config,
+  default_config: default_config,
+  storage_name: CONFIG_STORAGE_NAME,
+  project_name: PROJECT_NAME
+};
+
+/***/ }),
+
+/***/ "result_adapter":
+/*!********************************************!*\
+  !*** external "require('result_adapter')" ***!
+  \********************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require('result_adapter');
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/defineProperty.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/defineProperty.js ***!
+  \***************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var toPropertyKey = __webpack_require__(/*! ./toPropertyKey.js */ "./node_modules/@babel/runtime/helpers/toPropertyKey.js");
+function _defineProperty(e, r, t) {
+  return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+    value: t,
+    enumerable: !0,
+    configurable: !0,
+    writable: !0
+  }) : e[r] = t, e;
+}
+module.exports = _defineProperty, module.exports.__esModule = true, module.exports["default"] = module.exports;
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/interopRequireDefault.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/interopRequireDefault.js ***!
+  \**********************************************************************/
+/***/ ((module) => {
+
+function _interopRequireDefault(e) {
+  return e && e.__esModule ? e : {
+    "default": e
+  };
+}
+module.exports = _interopRequireDefault, module.exports.__esModule = true, module.exports["default"] = module.exports;
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/toPrimitive.js":
+/*!************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/toPrimitive.js ***!
+  \************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _typeof = (__webpack_require__(/*! ./typeof.js */ "./node_modules/@babel/runtime/helpers/typeof.js")["default"]);
+function toPrimitive(t, r) {
+  if ("object" != _typeof(t) || !t) return t;
+  var e = t[Symbol.toPrimitive];
+  if (void 0 !== e) {
+    var i = e.call(t, r || "default");
+    if ("object" != _typeof(i)) return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return ("string" === r ? String : Number)(t);
+}
+module.exports = toPrimitive, module.exports.__esModule = true, module.exports["default"] = module.exports;
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/toPropertyKey.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/toPropertyKey.js ***!
+  \**************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var _typeof = (__webpack_require__(/*! ./typeof.js */ "./node_modules/@babel/runtime/helpers/typeof.js")["default"]);
+var toPrimitive = __webpack_require__(/*! ./toPrimitive.js */ "./node_modules/@babel/runtime/helpers/toPrimitive.js");
+function toPropertyKey(t) {
+  var i = toPrimitive(t, "string");
+  return "symbol" == _typeof(i) ? i : i + "";
+}
+module.exports = toPropertyKey, module.exports.__esModule = true, module.exports["default"] = module.exports;
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/typeof.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/typeof.js ***!
+  \*******************************************************/
+/***/ ((module) => {
+
+function _typeof(o) {
+  "@babel/helpers - typeof";
+
+  return module.exports = _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
+    return typeof o;
+  } : function (o) {
+    return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+  }, module.exports.__esModule = true, module.exports["default"] = module.exports, _typeof(o);
+}
+module.exports = _typeof, module.exports.__esModule = true, module.exports["default"] = module.exports;
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/global */
+/******/ 	(() => {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
+/******/ 	})();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+/*!*********************!*\
+  !*** ./src/查看日志.js ***!
+  \*********************/
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-11-29 11:28:15
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2022-12-07 21:59:34
+ * @Description: 
+ */
+"ui";
+
+var prepareWebView = __webpack_require__(/*! ./lib/PrepareWebView.js */ "./src/lib/PrepareWebView.js");
+importClass(android.view.View);
+importClass(android.view.WindowManager);
+
+// ---修改状态栏颜色 start--
+// clear FLAG_TRANSLUCENT_STATUS flag:
+activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+// add FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS flag to the window
+activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+activity.getWindow().setStatusBarColor(android.R.color.white);
+activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+// ---修改状态栏颜色 end--
+
+var dateFormat = __webpack_require__(/*! ./lib/DateUtil.js */ "./src/lib/DateUtil.js");
+var _require = __webpack_require__(/*! @/simpleConfig.js */ "./src/simpleConfig.js"),
+  config = _require.config,
+  default_config = _require.default_config,
+  storage_name = _require.storage_name;
+var FileUtils = __webpack_require__(/*! ./lib/prototype/FileUtils */ "./src/lib/prototype/FileUtils.js");
+config.hasRootPermission = files.exists("/sbin/su") || files.exists("/system/xbin/su") || files.exists("/system/bin/su");
+if (config.device_width < 10 || config.device_height < 10) {
+  toastLog('设备分辨率信息不正确，可能无法正常运行脚本, 请先运行一遍main.js以便自动获取分辨率');
+  exit();
+}
+ui.layout("\n  <vertical>\n    <webview id=\"webview\" margin=\"0 0\" h=\"*\" w=\"*\" />\n  </vertical>\n");
+var mainScriptPath = FileUtils.getRealMainScriptPath(true);
+var indexFilePath = "file://" + mainScriptPath + "/vue_configs/log-read.html";
+var postMessageToWebView = function postMessageToWebView() {
+  console.error('function not ready');
+};
+
+/**/
+
+var bridgeHandlerBuilder = __webpack_require__(/*! ./lib/BridgeHandler.js */ "./src/lib/BridgeHandler.js");
+// let logPath = '/storage/emulated/0/脚本/.logs/autojs-log4j.txt'
+// let logPath = '/storage/emulated/0/脚本/energy_store/logs/for-read.log'
+var logPath = mainScriptPath + '/logs/log-verboses.log';
+function logHandler(BaseHandler) {
+  // 扩展方法 
+  console.verbose('注册方法 loadLogs');
+  BaseHandler.loadLogs = function (data, callbackId) {
+    var readResult = FileUtils.readLastLines(data.logPath || logPath, data.num || 200, data.start);
+    postMessageToWebView({
+      callbackId: callbackId,
+      data: {
+        readResult: readResult
+      }
+    });
+  };
+  BaseHandler.listLogFiles = function (data, callbackId) {
+    var logFileMatcher = new RegExp(data.logFileMatcher || /\.(log|txt)(\.\d+)?$/);
+    var fileResult = FileUtils.listDirs(data.filePath, function (file) {
+      return file.isDirectory() || logFileMatcher.test(file.getName());
+    });
+    console.verbose('加载文件列表：' + JSON.stringify(fileResult));
+    postMessageToWebView({
+      callbackId: callbackId,
+      data: {
+        fileResult: fileResult,
+        currentPath: data.filePath
+      }
+    });
+  };
+  return BaseHandler;
+}
+
+/**/
+postMessageToWebView = prepareWebView(ui.webview, {
+  enable_log: true,
+  mainScriptPath: mainScriptPath,
+  indexFilePath: indexFilePath,
+  // 延迟注册
+  bridgeHandler: function bridgeHandler() {
+    return logHandler(bridgeHandlerBuilder(postMessageToWebView));
+  },
+  onPageFinished: function onPageFinished() {}
+});
+
+// ---------------------
+
+var timeout = null;
+ui.emitter.on('back_pressed', function (e) {
+  if (ui.webview.canGoBack()) {
+    ui.webview.goBack();
+    e.consumed = true;
+    return;
+  }
+  // toastLog('触发了返回')
+  if (timeout == null || timeout < new Date().getTime()) {
+    e.consumed = true;
+    toastLog('再按一次退出');
+    // 一秒内再按一次
+    timeout = new Date().getTime() + 1000;
+  } else {
+    toastLog('再见~');
+  }
+});
+/******/ })()
+;
