@@ -7,7 +7,7 @@ let DAILY_UPDATE_CHECK_STORAGE = "daily_update_check"
 importPackage(Packages["okhttp3"])
 module.exports = (() => {
 
-  function BaseDownloader () {
+  function BaseDownloader() {
     let _this = this
 
     this.doDownload = function () {
@@ -158,7 +158,7 @@ module.exports = (() => {
     this.basePrepareDownloader(this.prepareDownloader(), this.rootPath)
   }
 
-  function UpdateDownloader (github_latest_url, gitee_relase_url, gitee_package_prefix, gitee_package_url) {
+  function UpdateDownloader(github_latest_url, gitee_relase_url, gitee_package_prefix, gitee_package_url) {
     BaseDownloader.call(this)
     let _this = this
     this.githubReleaseUrl = github_latest_url
@@ -221,7 +221,7 @@ module.exports = (() => {
 
   UpdateDownloader.prototype = Object.create(BaseDownloader.prototype)
   UpdateDownloader.prototype.constructor = UpdateDownloader
-  function HistoryDownloader (historyTagUrl) {
+  function HistoryDownloader(historyTagUrl) {
     BaseDownloader.call(this)
     this.apiUrl = historyTagUrl
     this.prepareDownloader = function () {
@@ -282,7 +282,7 @@ module.exports = (() => {
 })()
 
 // -----
-function UpdateChecker (latestUrl) {
+function UpdateChecker(latestUrl) {
   storageFactory.initFactoryByKey(UPDATE_STORAGE, { latestVersion: '' })
   storageFactory.initFactoryByKey(DAILY_UPDATE_CHECK_STORAGE, { checked: false })
   this.latestUrl = latestUrl
@@ -378,7 +378,7 @@ function UpdateChecker (latestUrl) {
 
 
 // -- support func --
-function prepareDownloaderForPro (downloader) {
+function prepareDownloaderForPro(downloader) {
   let is_pro = Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/)
   if (is_pro) {
     let origin = {}
@@ -390,7 +390,7 @@ function prepareDownloaderForPro (downloader) {
        * @param obj
        * @return jsonString
        */
-      toJSONString (obj) {
+      toJSONString(obj) {
         return JSON.stringify(obj)
       },
 
@@ -418,7 +418,7 @@ function prepareDownloaderForPro (downloader) {
        * @param name
        * @return
        */
-      getObject (jsonString, name) {
+      getObject(jsonString, name) {
         return JSON.parse(jsonString)[name]
       },
 

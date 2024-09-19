@@ -2,8 +2,8 @@
  * 配置需要异步加载的文件
  */
 const loadJsList = [
-  // './js/components/configuration/About.js',
-  // './js/components/configuration/DevelopConfig.js',
+  './js/components/configuration/About.js',
+  './js/components/configuration/DevelopConfig.js',
   './js/components/configuration/AccountConfigs.js',
   './js/components/configuration/CommonConfigs.js',
   './js/components/Index.js',
@@ -37,11 +37,11 @@ cssList.forEach(css => appendCss(css))
 
 //===============
 
-function createElement (element) {
+function createElement(element) {
   return document.createElement(element)
 }
 
-function appendCss (url) {
+function appendCss(url) {
   return new Promise((resolve, reject) => {
     let css = createElement('link')
     css.rel = "stylesheet"
@@ -63,7 +63,7 @@ function appendCss (url) {
  * @param {string} url 
  * @returns 
  */
-function appendJs (url) {
+function appendJs(url) {
   return new Promise((resolve, reject) => {
     let script = createElement('script')
     script.type = "text/javascript"
@@ -81,7 +81,7 @@ function appendJs (url) {
 /**
  * 按顺序同步加载
  */
-async function asyncAppendJs (jsList) {
+async function asyncAppendJs(jsList) {
   for (var i = 0; i < jsList.length; i++) {
     console.log('同步加载：', jsList[i])
     await appendJs(jsList[i])
