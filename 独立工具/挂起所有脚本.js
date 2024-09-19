@@ -6140,7 +6140,7 @@ var default_config = {
   auto_check_update: false,
   github_url: '',
   // github release url 用于检测更新状态
-  github_latest_url: '',
+  github_latest_url: 'https://api.github.com/repos/LionYan-Coder/AutoSignAli/releases/latest',
   // 延迟启动时延 5秒 悬浮窗中进行的倒计时时间
   delayStartTime: 5,
   device_width: device.width,
