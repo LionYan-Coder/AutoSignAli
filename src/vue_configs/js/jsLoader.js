@@ -2,8 +2,9 @@
  * 配置需要异步加载的文件
  */
 const loadJsList = [
-  './js/components/configuration/About.js',
-  './js/components/configuration/DevelopConfig.js',
+  // './js/components/configuration/About.js',
+  // './js/components/configuration/DevelopConfig.js',
+  './js/components/configuration/AccountConfigs.js',
   './js/components/configuration/CommonConfigs.js',
   './js/components/Index.js',
 ]

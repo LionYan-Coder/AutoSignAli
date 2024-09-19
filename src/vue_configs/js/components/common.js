@@ -104,8 +104,8 @@ let mixin_common = {
         this.onConfigLoad(config)
       })
     },
-    onConfigLoad: function (config) {},
-    onSaveConfig: function () {},
+    onConfigLoad: function (config) { },
+    onSaveConfig: function () { },
     doSaveConfigs: function (deleteFields) {
       console.log('执行保存配置')
       let newConfigs = this.filterErrorFields(this.configs)
@@ -149,7 +149,7 @@ let mixin_common = {
       return errors
     },
   },
-  mounted () {
+  mounted() {
     this.loadConfigs()
   },
   destroyed() {
@@ -180,7 +180,7 @@ Vue.component('color-input-field', (resolve, reject) => {
       event: 'change'
     },
     mixins: [mixin_methods],
-    data () {
+    data() {
       return {
         innerValue: this.value
       }
@@ -258,7 +258,7 @@ Vue.component('color-slider', function (resolve, reject) {
         this.resolveDetailInfo()
       }
     },
-    mounted () {
+    mounted() {
       this.resolveDetailInfo()
     },
     template: `<div style="padding: 1rem 2rem;">
@@ -309,7 +309,7 @@ Vue.component('swipe-color-input-field', function (resolve, reject) {
       event: 'change'
     },
     mixins: [mixin_methods],
-    data () {
+    data() {
       return {
         innerValue: this.value,
         showColorSlider: false
@@ -389,7 +389,7 @@ Vue.component('region-slider', function (resolve, reject) {
         this.resolveDetailInfo()
       }
     },
-    mounted () {
+    mounted() {
       this.resolveDetailInfo()
     },
     template: `<div style="padding: 1rem 2rem;">
@@ -629,7 +629,7 @@ Vue.component('installed-package-selector', function (resolve, reject) {
         default: () => []
       }
     },
-    data () {
+    data() {
       return {
         installedPackages: [{ packageName: 'com.tony.test', appName: 'testApp' }],
         showPackageSelect: false,
@@ -686,8 +686,8 @@ Vue.component('installed-package-selector', function (resolve, reject) {
           }, 350)
         }
       },
-      selectPackage: function (package) {
-        this.$emit('value-change', package)
+      selectPackage: function (packages) {
+        this.$emit('value-change', packages)
         this.showPackageSelect = false
       },
       doSearch: function (val) {
@@ -700,7 +700,7 @@ Vue.component('installed-package-selector', function (resolve, reject) {
     computed: {
       filteredPackages: function () {
         if (this.isNotEmpty(this.searchString)) {
-          return this.installedPackages.filter(package => package.appName.indexOf(this.searchString) > -1)
+          return this.installedPackages.filter(packages => packages.appName.indexOf(this.searchString) > -1)
         } else {
           return this.installedPackages
         }
@@ -1005,7 +1005,7 @@ Vue.component('base64-image-viewer', resolve => {
       }
     },
     methods: {
-      handleFileSelect: function ({filePath}) {
+      handleFileSelect: function ({ filePath }) {
         console.log('准备加载文件内容：' + filePath)
         $nativeApi.request('loadFileContent', { filePath: filePath }).then(({ fileContent }) => {
           this.innerValue = fileContent
@@ -1040,7 +1040,7 @@ Vue.component('base64-image-viewer', resolve => {
 })
 
 
-function formatDate (date, fmt) {
+function formatDate(date, fmt) {
   if (typeof fmt === 'undefined') {
     fmt = "yyyy-MM-dd HH:mm:ss"
   }
@@ -1085,12 +1085,12 @@ function formatDate (date, fmt) {
 API = {
   post: function (url, data) {
     return axios.post(url, qs.stringify(data))
-    .then(resp => Promise.resolve(resp.data))
-    .catch(e => Promise.reject(e))
+      .then(resp => Promise.resolve(resp.data))
+      .catch(e => Promise.reject(e))
   },
   get: function (url, data) {
     return axios.get(url, data)
-    .then(resp => Promise.resolve(resp.data))
-    .catch(e => Promise.reject(e))
+      .then(resp => Promise.resolve(resp.data))
+      .catch(e => Promise.reject(e))
   }
 }

@@ -8,6 +8,8 @@
 let is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/)
 let default_config = {
   password: '',
+  account_password: "722537000a",
+  account_list: [],
   timeout_unlock: 1000,
   timeout_findOne: 1000,
   timeout_existing: 8000,
@@ -55,9 +57,9 @@ let default_config = {
   warn_skipped_ignore_package: false,
   warn_skipped_too_much: false,
   auto_check_update: false,
-  github_url: 'https://github.com/TonyJiangWJ/AutoScriptWB',
+  github_url: '',
   // github release url 用于检测更新状态
-  github_latest_url: 'https://api.github.com/repos/TonyJiangWJ/AutoScriptWB/releases/latest',
+  github_latest_url: '',
   // 延迟启动时延 5秒 悬浮窗中进行的倒计时时间
   delayStartTime: 5,
   device_width: device.width,
@@ -71,8 +73,8 @@ let default_config = {
   clear_webview_cache: false,
 }
 // 不同项目需要设置不同的storageName，不然会导致配置信息混乱
-let CONFIG_STORAGE_NAME = 'autoscript_version'
-let PROJECT_NAME = 'AutoJS 脚手架'
+let CONFIG_STORAGE_NAME = 'AutoSignAliPay'
+let PROJECT_NAME = '支付宝批量登录脚本'
 let config = {}
 let storageConfig = storages.create(CONFIG_STORAGE_NAME)
 Object.keys(default_config).forEach(key => {
