@@ -3,7 +3,7 @@
  * 关于项目
  */
 const About = {
-  data () {
+  data() {
     return {
       version: 'develop_version',
       githubUrl: '',
@@ -47,7 +47,7 @@ const About = {
       return ''
     }
   },
-  mounted () {
+  mounted() {
     window.$nativeApi.request('getLocalVersion').then(r => {
       this.version = r.versionName
     })
@@ -59,18 +59,18 @@ const About = {
     })
   },
   template: `
-  <div class="about">
+  <div>
     <van-cell-group>
       <van-cell title="版本" :value="version"/>
       <van-cell title="检测更新" value="点击更新" @click="checkForUpdate"/>
-      <van-cell title="作者" value="TonyJiangWJ"/>
-      <van-cell title="Email" value="TonyJiangWJ@gmail.com"/>
-      <van-cell v-if="qq_group" title="QQ交流群" :value="qq_group" @click="openQQGroup"/>
-      <van-cell value-class="long-value" v-if="githubShort" title="Github" :value="githubShort" @click="openGithubUrl"/>
-      <van-cell value-class="long-value" v-if="giteeShort" title="Gitee" :value="giteeShort" @click="openGiteeUrl"/>
-      <van-cell title="开发模式" @click="openDevelopMode" is-link />
+      // <van-cell title="作者" value="TonyJiangWJ"/>
+      // <van-cell title="Email" value="TonyJiangWJ@gmail.com"/>
+      // <van-cell v-if="qq_group" title="QQ交流群" :value="qq_group" @click="openQQGroup"/>
+      // <van-cell value-class="long-value" v-if="githubShort" title="Github" :value="githubShort" @click="openGithubUrl"/>
+      // <van-cell value-class="long-value" v-if="giteeShort" title="Gitee" :value="giteeShort" @click="openGiteeUrl"/>
+      // <van-cell title="开发模式" @click="openDevelopMode" is-link />
     </van-cell-group>
-    <tip-block>本脚本免费使用，更新渠道只有Github<template v-if="giteeShort">和Gitee</template>，请不要被其他引流渠道欺骗了</tip-block>
+    // <tip-block>本脚本免费使用，更新渠道只有Github<template v-if="giteeShort">和Gitee</template>，请不要被其他引流渠道欺骗了</tip-block>
   </div>
   `
 }

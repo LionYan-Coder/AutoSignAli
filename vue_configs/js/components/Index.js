@@ -27,10 +27,10 @@ let Index = {
         //   title: '高级设置',
         //   link: '/advance/common'
         // },
-        // {
-        //   title: '关于项目',
-        //   link: '/about'
-        // },
+        {
+          title: '关于项目',
+          link: '/about'
+        },
       ]
     }
   },
