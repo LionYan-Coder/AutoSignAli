@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "npx webpack --config webpack.config.js --mode=development",
-    "build": "npm run clean && npx webpack --config webpack.config.js --mode=production",
+    "build:dev": "npm run clean && npx webpack --config webpack.config.js --mode=development",
+    "build:pro": "npm run clean && npx webpack --config webpack.config.js --mode=production",
     "clean": "npm run clean:dist",
     "clean:dist": "npx rimraf dist"
   },

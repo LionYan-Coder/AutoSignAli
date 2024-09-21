@@ -45,7 +45,7 @@ removeOutdateBacklogFiles()
 /**
  * Logger 日志基类
  */
-function Logger () {
+function Logger() {
 
   this.fileWriteCostCounter = 0
   this.backupCostCounter = 0
@@ -71,7 +71,7 @@ function Logger () {
 /**
  * 异步日志
  */
-function AsyncLogger () {
+function AsyncLogger() {
   Logger.call(this)
 
   this.executeThreadPool = new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, new LinkedBlockingQueue(10), new ThreadFactory({
@@ -218,7 +218,7 @@ function AsyncLogger () {
 /**
  * 同步日志
  */
-function SyncLogger () {
+function SyncLogger() {
   Logger.call(this)
   this.storage = storages.create(_storage_name + 'run_log_file')
 
@@ -294,7 +294,7 @@ const showToast = function (content, logFunc, isToast, logType) {
 /**
  * 移除过期的日志 默认清除三天前的
  */
-function removeOutdateBacklogFiles () {
+function removeOutdateBacklogFiles() {
   if (files.exists(logbackDirPath)) {
     doRemoveTargetTypeLogFiles('log-verbose')
     doRemoveTargetTypeLogFiles('log')
@@ -328,7 +328,7 @@ function doRemoveTargetTypeLogFiles(logType) {
   let outdateLogs = getTargetTypeOutdateFiles(logType)
   // 至少保留三个
   if (outdateLogs && outdateLogs.length > 3) {
-    outdateLogs.forEach((logFile,idx) => {
+    outdateLogs.forEach((logFile, idx) => {
       if (idx < 3) {
         return
       }
@@ -343,7 +343,7 @@ function doRemoveTargetTypeLogFiles(logType) {
  * 清除日志到备份文件夹，当不传递日志类型时清除所有日志
  * @param {string} target 日志类型
  */
-function innerClearLogFile (target) {
+function innerClearLogFile(target) {
   let path = PATH_CONFIG[target]
   if (!target) {
     // 全部清除
@@ -383,7 +383,7 @@ const clearTarget = function (originLogPath) {
 /**
  * 校验文件大小并执行备份
  */
-function checkFileSizeAndBackup () {
+function checkFileSizeAndBackup() {
   let start = new Date()
   let hadBackup = false
   for (let key in PATH_CONFIG) {
@@ -410,7 +410,7 @@ function checkFileSizeAndBackup () {
  * 格式化输入参数 eg. `['args: {} {} {}', 'arg1', 'arg2', 'arg3']` => `'args: arg1 arg2 arg3'`
  * @param {array} originContent 输入参数
  */
-function convertObjectContent (originContent) {
+function convertObjectContent(originContent) {
   if (typeof originContent === 'string') {
     return originContent
   } else if (Array.isArray(originContent)) {
