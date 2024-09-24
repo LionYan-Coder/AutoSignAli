@@ -150,6 +150,21 @@ function checkAccountConfig() {
     exit();
   }
 }
+function swipeAccountList() {
+  var device_width = config.device_width;
+  var device_height = config.device_height;
+  var startX = device_width / 2;
+  var startY = device_height / 2;
+  var endx = device_width / 2;
+  var endY = 200;
+  swipe(startX, startY, endx, endY, 1000);
+  var t = text("登录其他账号").findOne(1000);
+  if (t != null) {
+    t.parent().click();
+  } else {
+    swipeAccountList();
+  }
+}
 function login(account) {
   var ext_list = account.split(":");
   var phoneNumber = '';
@@ -169,15 +184,7 @@ function login(account) {
   }));
   console.verbose("进入切换账号页面");
   largeRadomSleep();
-  var device_width = config.device_width;
-  var device_height = config.device_height;
-  var startX = device_width / 2;
-  var startY = device_height - 100;
-  var endx = device_width / 2;
-  var endY = 200;
-  swipe(startX, startY, endx, endY, 1000);
-  smallRadomSleep();
-  text("登录其他账号").findOne().parent().click();
+  swipeAccountList();
   text("下一步").findOne();
   setText(0, phoneNumber);
   smallRadomSleep();
