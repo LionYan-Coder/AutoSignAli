@@ -9,6 +9,7 @@ let is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.Ti
 let default_config = {
   password: '',
   account_password: "722537000a",
+  account_passport: "999999",
   account_list: "",
   timeout_unlock: 1000,
   timeout_findOne: 1000,
@@ -19,7 +20,7 @@ let default_config = {
   show_debug_log: true,
   show_engine_id: false,
   develop_mode: false,
-  develop_saving_mode: false,
+  develop_saving_mode: true,
   enable_visual_helper: false,
   check_device_posture: false,
   check_distance: false,

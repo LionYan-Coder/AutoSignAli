@@ -490,7 +490,12 @@ module.exports = {
       content = convertObjectContent(content)
       content = formatDate(new Date()) + ' ' + content
       console.verbose(content)
-      files.append(MAIN_PATH + '/logs/' + fileName + '.log', content)
+      var name = MAIN_PATH + '/logs/' + fileName + '.log'
+      if (!files.exists(name)) {
+        files.create(name);
+      }
+      files.append(name, content)
+
     }
   },
   clearLogFile: innerClearLogFile,
