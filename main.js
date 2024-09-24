@@ -7,10 +7,267 @@
   \**********************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-var FloatyInstance = __webpack_require__(/*! @/lib/prototype/FloatyUtil */ "./src/lib/prototype/FloatyUtil.js");
 var _require = __webpack_require__(/*! @/simpleConfig */ "./src/simpleConfig.js"),
   config = _require.config;
-function mainLoop() {}
+var _require2 = __webpack_require__(/*! @/lib/prototype/LogUtils */ "./src/lib/prototype/LogUtils.js"),
+  developSaving = _require2.developSaving;
+function isNotEmpty(v) {
+  return !(typeof v === 'undefined' || v === null || v === '');
+}
+function getRandomDelay(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function largeRadomSleep() {
+  var delay = getRandomDelay(2000, 3500);
+  sleep(delay);
+}
+function smallRadomSleep() {
+  var delay = getRandomDelay(500, 1000);
+  sleep(delay);
+}
+function writeAccountLog(text) {
+  developSaving("".concat(text, "\n"), "\u672A\u6210\u529F\u767B\u5F55\u8D26\u6237");
+}
+function verifySwipe() {
+  var device_width = config.device_width;
+  var device_height = config.device_height;
+  var startX = device_width / 2;
+  var startY = device_height / 2;
+  var endX = device_width / 2 + getRandomDelay(-70, 70);
+  var endY = getRandomDelay(235, 444);
+  var midX = (startX + endX) / 2 + getRandomDelay(-50, 50);
+  var midY = (startY + endY) / 2 + getRandomDelay(-50, 50);
+  press(startX, startY, getRandomDelay(2000, 3500));
+  gesture(getRandomDelay(1500, 3000), [startX, startY], [midX, midY], [endX, endY]);
+  largeRadomSleep();
+}
+function verifyLongPress() {
+  var device_width = config.device_width;
+  var device_height = config.device_height;
+  gesture(3000, [device_width / 2, device_height / 2], [device_width / 2, device_height / 2 + 5], [device_width / 2, device_height / 2 - 10], [device_width / 2, device_height / 2 - 15]);
+  largeRadomSleep();
+}
+function verifyBallGesture() {
+  if (!requestScreenCapture()) {
+    toast("请求截图失败");
+    exit();
+  }
+  console.log("开始脚本校验中");
+  console.hide();
+  smallRadomSleep();
+  var device_width = config.device_width;
+  var device_height = config.device_height;
+  console.log("\u5C4F\u5E55\u5206\u8FA8\u7387\uFF1A".concat(device_width, "*").concat(device_height));
+  var basketColor = "#f2f4f5"; // 篮筐的颜色
+  var ballColor = "#ff5400"; // 篮球的颜色
+
+  var img = captureScreen();
+  var ballPoint = findColorInRegion(img, ballColor, 0, 0, device_width, device_height * 0.7);
+  var basketPoint = findColorInRegion(img, basketColor, 0, device_height * 0.7, device_width, device_height * 0.3 - 20);
+  if (ballPoint != null && basketPoint != null) {
+    console.log("\u7BEE\u7403\u4F4D\u7F6E\uFF1A ".concat(ballPoint.x, " ").concat(ballPoint.y));
+    console.log("\u7BEE\u7B50\u4F4D\u7F6E\uFF1A ".concat(basketPoint.x, " ").concat(basketPoint.y));
+
+    // 计算滑动距离和方向
+    var startX = ballPoint.x;
+    var startY = ballPoint.y;
+    var endX = basketPoint.x;
+    var endY = basketPoint.y;
+    var midX = (startX + endX) / 2 + getRandomDelay(-50, 50);
+    var midY = (startY + endY) / 2 + getRandomDelay(-50, 50);
+    smallRadomSleep();
+    console.log("模拟手势滑动中", [startX, startY], [midX, midY], [endX, endY]);
+    gesture(getRandomDelay(1000, 3000), [startX, startY], [midX, midY], [endX, endY]);
+    largeRadomSleep();
+    console.show();
+    return true;
+  } else {
+    largeRadomSleep();
+    console.show();
+    return false;
+  }
+}
+function verifyPassPort(passportNumber) {
+  console.verbose("--------\u5F00\u59CB\u9A8C\u8BC1\u62A4\u7167 ".concat(passportNumber, " ---------"));
+  console.hide();
+  var passport_len = textMatches(/验证护照号后6位|验证护照号后4位/).findOne().text();
+  if (passport_len == "验证护照号后4位") {
+    setText(passportNumber.slice(0, 4));
+  } else {
+    setText(passportNumber);
+  }
+  smallRadomSleep();
+  console.show();
+  console.info("\u68C0\u6D4B\u62A4\u7167\u9A8C\u8BC1\u662F\u5426\u6210\u529F");
+  var success = textContains("错误").findOne(getRandomDelay(2000, 5000));
+  return success == null;
+}
+function passVerify() {
+  try {
+    var verifyType = textMatches(/请将球滑向篮球框中|请用手指按住屏幕完成验证|伸出一根手指放在屏幕上，手机振动时从屏幕下方往上划动完成验证|请摇晃手机完成验证/).findOne().text();
+    console.verbose("--------\u5F53\u524D\u64CD\u4F5C\u9A8C\u8BC1\u4E3A ".concat(verifyType, " ---------"));
+    console.hide();
+    if (verifyType == "请将球滑向篮球框中") {
+      var success = verifyBallGesture();
+      if (!success) {
+        console.error("\u624B\u52BF\u9A8C\u8BC1\u5931\u8D25\u5373\u5C06\u5207\u6362\u4E0B\u4E00\u4E2A\u8D26\u6237");
+        return false;
+      }
+    } else if (verifyType == "请用手指按住屏幕完成验证") {
+      id("com.zoloz.hummer:id/btn_left").findOne().click();
+      text("确定").findOne().click();
+      text("下一步").findOne();
+      click("下一步");
+      passVerify();
+    } else if (verifyType == '伸出一根手指放在屏幕上，手机振动时从屏幕下方往上划动完成验证') {
+      verifySwipe();
+    } else if (verifyType == '请摇晃手机完成验证') {
+      id("com.zoloz.hummer:id/btn_left").findOne().click();
+      text("确定").findOne().click();
+      text("下一步").findOne();
+      click("下一步");
+      passVerify();
+    }
+  } catch (error) {
+    console.error(error.toString());
+    return false;
+  } finally {
+    console.show();
+  }
+  return true;
+}
+function checkAccountConfig() {
+  var password = config.account_password;
+  var account_list_str = config.account_list;
+  if (!isNotEmpty(password)) {
+    console.error("请配置主密码");
+    toastLog("请配置主密码");
+    exit();
+  }
+  if (!isNotEmpty(account_list_str)) {
+    console.error("请配置账户");
+    toastLog("请配置账户");
+    exit();
+  }
+}
+function login(account) {
+  var ext_list = account.split(":");
+  var phoneNumber = '';
+  var password = config.account_password;
+  var passport = config.account_passport;
+  phoneNumber = ext_list[0];
+  if (isNotEmpty(ext_list[1])) {
+    password = ext_list[1];
+  }
+  if (isNotEmpty(ext_list[2])) {
+    passport = ext_list[2];
+  }
+  console.verbose("\u5F53\u524D\u8D26\u6237\u914D\u7F6E: ".concat(account, ", \u624B\u673A\u53F7\uFF1A").concat(phoneNumber, " \u5BC6\u7801\uFF1A ").concat(password, " \u62A4\u7167\u540E6\u4F4D\uFF1A").concat(passport));
+  app.startActivity(app.intent({
+    action: "VIEW",
+    data: "alipayqr://platformapi/startapp?appId=20000027"
+  }));
+  console.verbose("进入切换账号页面");
+  largeRadomSleep();
+  var device_width = config.device_width;
+  var device_height = config.device_height;
+  var startX = device_width / 2;
+  var startY = device_height - 100;
+  var endx = device_width / 2;
+  var endY = 200;
+  swipe(startX, startY, endx, endY, 1000);
+  smallRadomSleep();
+  text("登录其他账号").findOne().parent().click();
+  text("下一步").findOne();
+  setText(0, phoneNumber);
+  smallRadomSleep();
+  click("下一步");
+  console.warn("--------检测是否弹出服务协议---------");
+  var privacy = textContains("服务协议").findOne(3000);
+  if (privacy != null) {
+    console.verbose("同意服务协议及隐私保护");
+    text("同意").findOne().click();
+    smallRadomSleep();
+  }
+  var stepType = textMatches(/操作验证|更多选项|提示/).findOne().text();
+  console.verbose("--------\u5F53\u524D\u64CD\u4F5C\u4E3A ".concat(stepType, " ---------"));
+  if (stepType == '操作验证') {
+    var success = passVerify(); // 接收 passVerify 的返回值
+    if (!success) {
+      return false; // 验证失败，返回 false
+    }
+  }
+  if (stepType == "提示") {
+    writeAccountLog("".concat(account, " \u539F\u56E0\uFF1A\u672A\u77E5\u9A8C\u8BC1"));
+    return false;
+  }
+  var obj = textMatches(/短信验证码登录|指纹登录|登录/).findOne().text();
+  if (obj == "短信验证码登录" || obj == "指纹登录") {
+    smallRadomSleep();
+    textMatches(/换个验证方式|换个方式登录|更多选项/).findOne();
+    // clickCenter(text("换个方式登录").findOne(2000))
+    // clickCenter(text("换个验证方式").findOne(2000))
+    textContains("更多选项").findOne(2000).click();
+    text("密码").findOne();
+    sleep(400);
+    click("密码", 0);
+    smallRadomSleep();
+    setText(0, password);
+    smallRadomSleep();
+    textContains("登录").findOne().parent().click();
+  } else {
+    smallRadomSleep();
+    setText(0, password);
+    smallRadomSleep();
+    textContains("登录").findOne().parent().click();
+  }
+  var text1 = textMatches(/身份验证|登录其他账号|我的|首页|重新输入|版本更新/).findOne().text();
+  console.verbose("--------\u5F53\u524D\u64CD\u4F5C\u4E3A ".concat(text1, " ---------"));
+  if (text1 == "身份验证") {
+    var text2 = textMatches(/换一个验证方式|输入短信验证码/).findOne().text();
+    console.verbose("--------\u5F53\u524D\u8EAB\u4EFD\u9A8C\u8BC1\u4E3A ".concat(text2, " ---------"));
+    if (text2 == '换一个验证方式') {
+      var _success = verifyPassPort(passport);
+      if (!_success) {
+        writeAccountLog("".concat(account, " \u539F\u56E0\uFF1A\u62A4\u7167\u8EAB\u4EFD\u9A8C\u8BC1\u5931\u8D25"));
+        console.error("身份验证失败即将切换下一个账户");
+        return false; // 验证失败，返回 false
+      }
+    } else if (text2 == "输入短信验证码") {
+      writeAccountLog("".concat(account, " \u539F\u56E0\uFF1A\u9700\u8981\u8F93\u5165\u77ED\u4FE1\u9A8C\u8BC1\u7801"));
+      console.error("身份验证失败即将切换下一个账户");
+      return false; // 验证失败，返回 false
+    }
+  } else if (text1 == "重新输入") {
+    console.error("密码错误，即将切换下一个账户");
+    writeAccountLog("".concat(account, " \u539F\u56E0\uFF1A\u5BC6\u7801\u9519\u8BEF"));
+    click("重新输入");
+    return false; // 验证失败，返回 false
+  } else if (text1 == "版本更新") {
+    text("稍后再说").findOne();
+    click("稍后再说");
+  }
+  console.info("--------登录成功即将切换到下一个用户---------");
+  return true; // 登录成功，返回 true
+}
+function mainLoop() {
+  console.show();
+  checkAccountConfig();
+  try {
+    var account_list = config.account_list.split("\n");
+    for (var index = 0; index < account_list.length; index++) {
+      var account = account_list[index];
+      var success = login(account);
+      if (!success) {
+        continue; // 如果登录失败，跳过当前账户，继续下一个
+      }
+    }
+  } catch (error) {
+    console.verbose(error.toString());
+    toast(error.toString());
+    exit();
+  }
+}
 function MainExecutor() {
   this.exec = function () {
     mainLoop();
@@ -7430,7 +7687,11 @@ module.exports = {
       content = convertObjectContent(content);
       content = formatDate(new Date()) + ' ' + content;
       console.verbose(content);
-      files.append(MAIN_PATH + '/logs/' + fileName + '.log', content);
+      var name = MAIN_PATH + '/logs/' + fileName + '.log';
+      if (!files.exists(name)) {
+        files.create(name);
+      }
+      files.append(name, content);
     }
   },
   clearLogFile: innerClearLogFile,
@@ -9404,7 +9665,8 @@ var is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.Ti
 var default_config = {
   password: '',
   account_password: "722537000a",
-  account_list: [],
+  account_passport: "999999",
+  account_list: "",
   timeout_unlock: 1000,
   timeout_findOne: 1000,
   timeout_existing: 8000,
@@ -9414,7 +9676,7 @@ var default_config = {
   show_debug_log: true,
   show_engine_id: false,
   develop_mode: false,
-  develop_saving_mode: false,
+  develop_saving_mode: true,
   enable_visual_helper: false,
   check_device_posture: false,
   check_distance: false,

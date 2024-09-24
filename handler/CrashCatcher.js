@@ -1071,7 +1071,11 @@ module.exports = {
       content = convertObjectContent(content);
       content = formatDate(new Date()) + ' ' + content;
       console.verbose(content);
-      files.append(MAIN_PATH + '/logs/' + fileName + '.log', content);
+      var name = MAIN_PATH + '/logs/' + fileName + '.log';
+      if (!files.exists(name)) {
+        files.create(name);
+      }
+      files.append(name, content);
     }
   },
   clearLogFile: innerClearLogFile,
@@ -1303,7 +1307,8 @@ var is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.Ti
 var default_config = {
   password: '',
   account_password: "722537000a",
-  account_list: [],
+  account_passport: "999999",
+  account_list: "",
   timeout_unlock: 1000,
   timeout_findOne: 1000,
   timeout_existing: 8000,
@@ -1313,7 +1318,7 @@ var default_config = {
   show_debug_log: true,
   show_engine_id: false,
   develop_mode: false,
-  develop_saving_mode: false,
+  develop_saving_mode: true,
   enable_visual_helper: false,
   check_device_posture: false,
   check_distance: false,

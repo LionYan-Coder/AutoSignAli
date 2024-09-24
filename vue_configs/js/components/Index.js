@@ -7,26 +7,14 @@ let Index = {
           title: "多账号管理",
           link: '/account'
         },
-        // {
-        //   title: '锁屏设置',
-        //   link: '/basic/lock'
-        // },
-        // {
-        //   title: '悬浮窗设置',
-        //   link: '/basic/floaty'
-        // },
-        // {
-        //   title: '日志设置',
-        //   link: '/basic/log'
-        // },
         {
           title: '前台应用白名单设置',
           link: '/advance/skipPackage'
         },
-        // {
-        //   title: '高级设置',
-        //   link: '/advance/common'
-        // },
+        {
+          title: '日志设置',
+          link: '/basic/log'
+        },
         {
           title: '关于项目',
           link: '/about'

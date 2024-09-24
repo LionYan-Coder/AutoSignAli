@@ -95,7 +95,7 @@ let mixin_common = {
     loadConfigs: function () {
       $app.invoke('loadConfigs', {}, config => {
         Object.keys(this.configs).forEach(key => {
-          // console.log('load config key:[' + key + '] value: [' + config[key] + ']')
+          console.log('load config key:[' + key + '] value: [' + config[key] + ']')
           this.$set(this.configs, key, config[key])
         })
         this.device.width = config.device_width
